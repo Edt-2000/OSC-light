@@ -5,10 +5,9 @@
 
 #include "Print.h"
 
-#include "..\..\Arduino\libraries\OSC-light\OSCMessage.cpp"
-#include "..\..\Arduino\libraries\OSC-light\OSCMessage.h"
-#include "..\..\Arduino\libraries\OSC-light\OSCMatch.h"
-
+#include "..\OSC-light\OSCMessage.cpp"
+#include "..\OSC-light\OSCMessage.h"
+#include "..\OSC-light\OSCMatch.h"
 
 int main()
 {
@@ -119,4 +118,3 @@ int main()
 
     return 0;
 }
-
