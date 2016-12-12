@@ -57,10 +57,7 @@ class OSCMatch
 public:
 	
 	bool isMatch(const char * address, const char * pattern, int addressOffset = 0, int patternOffset = 0) {
-		return false;
-	}
-		
-		/*bool result = false;
+		bool result = false;
 		
 		if (strcmp(address, pattern) == 0) {
 			result = true;
@@ -149,7 +146,7 @@ public:
 
 		return strncmp(_replacedAddressBuffer, pattern, patternLength) == 0;
 	}
-	*/
+	
 private:
 	char * _replacedAddressBuffer = new char[4];
 	int _replacedAddressBufferLength = 4;

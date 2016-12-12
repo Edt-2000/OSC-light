@@ -1,7 +1,7 @@
 #pragma once
 
 #ifdef _MSC_VER
-#include "../../../CPlusPlus/OSC-light.Test/Print.h"
+#include "../OSC-light.Test/Print.h"
 #else
 #include <Print.h>
 #endif
