@@ -13,6 +13,6 @@ public:
 		buffer = new char[dataCount];
 		bufferSize = dataCount;
 
-		memcpy(buffer, data, dataCount);
+		memcpy_s(buffer, dataCount, data, dataCount);
 	}
 };
