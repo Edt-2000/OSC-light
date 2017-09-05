@@ -13,8 +13,8 @@
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
-namespace OSClightTest
-{
+namespace OSClightUnitTest
+{		
 	class OSCProducerConsumer : public OSC::IMessageConsumer, public OSC::IMessageProducer
 	{
 	public:
@@ -41,41 +41,58 @@ namespace OSClightTest
 		}
 
 		void callback(OSC::Message * msg) {
-			
+
 		}
 	};
 
-	TEST_CLASS(OSClightTest)
+	TEST_CLASS(OSClightUnitTest)
 	{
 	public:
+		
+		TEST_METHOD(OSCEqualMatchesTest) {
+			auto tester = OSC::Match();
 
-		Print print = Print();
-		OSC::Match tester = OSC::Match();
-		OSC::Message message = OSC::Message();
-		OSC::Message newMessage = OSC::Message();
-		OSCProducerConsumer prodCons = OSCProducerConsumer();
-
-		OSC::Arduino OSC;
-		UDP Udp;
-
-		TEST_METHOD(OSCMatchTest) {
 			Assert::IsTrue(tester.isMatch("/Unit1", "/Unit1"));
 			Assert::IsTrue(tester.isMatch("/Unit1/Preset", "/Unit1/Preset"));
 			Assert::IsFalse(tester.isMatch("/Unit1", "/Unit2"));
 			Assert::IsFalse(tester.isMatch("/Unit1/Preset", "/Unit2"));
+		}
+
+		TEST_METHOD(OSCSimplePathMatchesTest) {
+			auto tester = OSC::Match();
+
+			Assert::IsTrue(tester.isMatch("/Unit1/Preset", "/Unit1"));
+			Assert::IsTrue(tester.isMatch("/Unit1/Preset/Deeper", "/Unit1"));
+			Assert::IsTrue(tester.isMatch("/Unit1/Preset/Deeper/MoreDeeper", "/Unit1"));
+			Assert::IsTrue(tester.isMatch("/Unit1/Preset/Deeper/MoreDeeper", "/Unit1/Preset"));
+			Assert::IsTrue(tester.isMatch("/Unit1/Preset/Deeper/MoreDeeper", "/Unit1/Preset/Deeper"));
+			Assert::IsTrue(tester.isMatch("/Unit1/Preset/Deeper/MoreDeeper", "/Unit1/Preset/Deeper/MoreDeeper"));
+			Assert::IsFalse(tester.isMatch("/Unit1/Preset/Deeper/MoreDeeper", "/Unit1/Preset/MoreDeeper"));
+			Assert::IsFalse(tester.isMatch("/Unit1/Preset/Deeper/MoreDeeper", "/Unit1/Deeper/MoreDeeper"));
 			Assert::IsTrue(tester.isMatch("/Unit1/Preset/a", "/Unit1/Preset/a"));
-			Assert::IsTrue(tester.isMatch("/Unit12345", "/Unit_2345"));
-			Assert::IsTrue(tester.isMatch("/Unit12345", "/Unit_2_45"));
-			Assert::IsTrue(tester.isMatch("/Unit12345", "/Unit_2_4_"));
-			Assert::IsFalse(tester.isMatch("/Unit12345", "/Unit_2_3_"));
-			Assert::IsFalse(tester.isMatch("/Unit12345", "/Unit_2_1_"));
-			Assert::IsTrue(tester.isMatch("/Unit12345", "/Unit_2___"));
-			Assert::IsTrue(tester.isMatch("/MegaUnitMegaUnitMegaUnitMegaUnit", "/MegaUnit_egaUnitMegaUnitMeg_Unit"));
-			Assert::IsTrue(tester.isMatch("/Unit1/Preset", "/Unit_/Preset"));
-			Assert::IsTrue(tester.isMatch("/Unit1/Preset", "/_n_t_/Preset"));
-			Assert::IsTrue(tester.isMatch("/Unit1/Preset", "/Unit_/Preset"));
-			Assert::IsTrue(tester.isMatch("/Unit2/Preset/a", "/Unit_/Preset/a"));
+		}
+
+		TEST_METHOD(OSCSimpleWildcardMatchesTest) {
+			auto tester = OSC::Match();
+
+			Assert::IsTrue(tester.isMatch("/Unit12345", "/Unit?2345"));
+			Assert::IsTrue(tester.isMatch("/Unit12345", "/Unit?2?45"));
+			Assert::IsTrue(tester.isMatch("/Unit12345", "/Unit?2?4?"));
+			Assert::IsFalse(tester.isMatch("/Unit12345", "/Unit?2?3?"));
+			Assert::IsFalse(tester.isMatch("/Unit12345", "/Unit?2?1?"));
+			Assert::IsTrue(tester.isMatch("/Unit12345", "/Unit?2???"));
+			Assert::IsTrue(tester.isMatch("/MegaUnitMegaUnitMegaUnitMegaUnit", "/MegaUnit?egaUnitMegaUnitMeg?Unit"));
+			Assert::IsTrue(tester.isMatch("/Unit1/Preset", "/Unit?/Preset"));
+			Assert::IsTrue(tester.isMatch("/Unit1/Preset", "/?n?t?/Preset"));
+			Assert::IsTrue(tester.isMatch("/Unit1/Preset", "/Unit?/Preset"));
+			Assert::IsTrue(tester.isMatch("/Unit2/Preset/a", "/Unit?/Preset/a"));
+		}
+
+		TEST_METHOD(OSCComplexWildcardMatchesTest) {
+			auto tester = OSC::Match();
+
 			Assert::IsTrue(tester.isMatch("/Unit1", "/*"));
+			Assert::IsFalse(tester.isMatch("/Unit1", "/"));
 			Assert::IsTrue(tester.isMatch("/Unit1/Preset", "/Unit1/*"));
 			Assert::IsTrue(tester.isMatch("/Unit1/Preset/a", "/Unit1/*/a"));
 			Assert::IsTrue(tester.isMatch("/Unit1/Preset/a", "/Unit1/Preset/*"));
@@ -87,6 +104,8 @@ namespace OSClightTest
 		}
 
 		TEST_METHOD(OSCMessageMatchTest) {
+			auto message = OSC::Message();
+
 			message.setAddress("/M");
 
 			Assert::IsTrue(message.isValidRoute("/M"));
@@ -103,6 +122,10 @@ namespace OSClightTest
 		}
 
 		TEST_METHOD(OSCMessageContentTest) {
+			auto newMessage = OSC::Message();
+			auto message = OSC::Message();
+			auto print = Print();
+
 			message.setAddress("/M");
 			message.empty();
 			message.reserveAtLeast(16);
@@ -133,7 +156,7 @@ namespace OSClightTest
 				Assert::AreEqual(message.getFloat(i), newMessage.getFloat(i), 0.0f, L"Floats not equal", LINE_INFO());
 				Assert::AreEqual(message.getInt(i), newMessage.getInt(i), L"Integers not equal", LINE_INFO());
 			}
-			
+
 			Assert::IsTrue(strcmp(message.address, newMessage.address) == 0);
 
 			int bufferLength = newMessage.bufferLength;
@@ -149,9 +172,34 @@ namespace OSClightTest
 			Assert::IsTrue(bufferLength == newMessage.bufferLength);
 		}
 
+		TEST_METHOD(OSCSerialization) {
+			auto message = OSC::Message();
+			auto print = Print();
+
+			message.setAddress("/Some/Address");
+			message.empty();
+			message.reserveAtLeast(5);
+			message.add<int>(1);
+			message.add<int>(2);
+			message.add<int>(3);
+			message.add<int>(4);
+			message.add<int>(5);
+			
+			message.send(&print);
+
+			std::string stringFromSerialization(print.fullBuffer);
+
+			Assert::AreEqual(
+				stringFromSerialization.c_str(), 
+				"/Some/Address___,iiiii_____\x1___\x2___\x3___\x4___\x5", 
+				L"Serialized data not conform spec", LINE_INFO());
+		}
+
 		TEST_METHOD(OSCLoop) {
-			OSC = OSC::Arduino(1, 1);
-			Udp = UDP();
+			auto OSC = OSC::Arduino(1, 1);
+			auto Udp = UDP();
+
+			auto prodCons = OSCProducerConsumer();
 
 			OSC.bindUDP(&Udp, 1, 1);
 
@@ -163,7 +211,7 @@ namespace OSClightTest
 			OSC.loop(true);
 
 			int bufferSizePre = OSC.bufferMessage.bufferLength;
-			
+
 			for (int i = 0; i < 1000; i++) {
 				OSC.loop(true);
 			}
@@ -174,8 +222,11 @@ namespace OSClightTest
 		}
 
 		TEST_METHOD(OSCSerializationSpeed) {
-			auto start = std::chrono::system_clock::now();
+			auto message = OSC::Message();
+			auto print = Print();
 
+			auto start = std::chrono::system_clock::now();
+			
 			message.setAddress("/M");
 			message.empty();
 			message.reserveAtLeast(16);
@@ -196,7 +247,7 @@ namespace OSClightTest
 			message.add<float>(-2.0001f);
 			message.add<float>(-10.0001f);
 
-			for (int i = 0; i < 1000000; i++) {
+			for (int i = 0; i < 1000; i++) {
 				message.send(&print);
 			}
 
@@ -206,7 +257,8 @@ namespace OSClightTest
 
 			auto value = diff.count();
 
-			Assert::IsTrue(value < 0.0,L"Speed",LINE_INFO());
+			Assert::IsTrue(value < 1.0, L"Speed", LINE_INFO());
 		}
+
 	};
 }

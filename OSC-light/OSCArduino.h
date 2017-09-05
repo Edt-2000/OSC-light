@@ -6,7 +6,7 @@
 
 // TODO: do not include the things required for testing here
 #ifdef _MSC_VER
-#include "../OSC-lightTest/Udp.h"
+#include "../OSC-lightUnitTest/Udp.h"
 #else
 #include <Udp.h>
 #endif
