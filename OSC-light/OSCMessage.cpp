@@ -1,5 +1,3 @@
-#pragma once
-
 #include "OSCMessage.h"
 #include "OSCMatch.h"
 
@@ -55,6 +53,7 @@ void OSC::Message::send(Print * p) {
 	int bufferPosition = 0;
 	int bufferSize = addressLength + addressPadding + 1 + dataCount + typePadding + (dataCount * 4);
 
+	// TODO: create this buffer once
 	char * buffer = new char[bufferSize];
 
 	strcpy(buffer, address);

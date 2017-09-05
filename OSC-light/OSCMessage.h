@@ -51,7 +51,6 @@ namespace OSC {
 
 			return 0;
 		}
-
 		// Sets the value in a new data position. 
 		// To improve performance, this new position should be reserved first.
 		template <typename T>
@@ -73,7 +72,8 @@ namespace OSC {
 
 		// Evaluates wheter the given pattern is a valid route for the message.
 		bool isValidRoute(const char * pattern) {
-			return _matchHelper.isMatch(address, pattern);
+			// the address is of the message is the pattern to match
+			return _matchHelper.isMatch(pattern, address);
 		}
 
 		// Boolean to evaluate whether the message should be send.

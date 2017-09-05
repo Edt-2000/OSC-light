@@ -9,6 +9,8 @@
 
 #include "..\OSC-light\OSCArduino.h"
 
+#include <chrono>
+
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace OSClightTest
@@ -171,5 +173,40 @@ namespace OSClightTest
 			Assert::AreEqual(bufferSizePre, bufferSizePost, L"Buffer message buffers not equal after 1000 loops", LINE_INFO());
 		}
 
+		TEST_METHOD(OSCSerializationSpeed) {
+			auto start = std::chrono::system_clock::now();
+
+			message.setAddress("/M");
+			message.empty();
+			message.reserveAtLeast(16);
+			message.add<int>(127);
+			message.add<float>(2.3f);
+			message.add<float>(3.4f);
+			message.add<float>(4.5f);
+			message.add<float>(5.6f);
+			message.add<int>(4301);
+			message.add<int>(-1);
+			message.add<float>(123.123f);
+			message.add<float>(1234.1234f);
+			message.add<float>(12345.12345f);
+			message.add<float>(123456.123456f);
+			message.add<int>(-2);
+			message.add<int>(32767);
+			message.add<float>(-2.1f);
+			message.add<float>(-2.0001f);
+			message.add<float>(-10.0001f);
+
+			for (int i = 0; i < 1000000; i++) {
+				message.send(&print);
+			}
+
+			auto end = std::chrono::system_clock::now();
+
+			std::chrono::duration<double> diff = end - start;
+
+			auto value = diff.count();
+
+			Assert::IsTrue(value < 0.0,L"Speed",LINE_INFO());
+		}
 	};
 }
