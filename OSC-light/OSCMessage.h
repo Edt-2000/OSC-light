@@ -2,7 +2,7 @@
 
 // TODO: do not include the things required for testing here
 #ifdef _MSC_VER
-#include "../OSC-lightTest/Print.h"
+#include "../OSC-lightUnitTest/Print.h"
 #else
 #include <Print.h>
 #endif

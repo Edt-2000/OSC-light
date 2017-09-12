@@ -1,7 +1,12 @@
 #pragma once
 
 //
-//	Matching algorithm for OSC messages.
+// Matching algorithm for OSC messages.
+//
+// OSC-light only supports a subset of the OSC specification concerning address pattern matching
+// This is to reduce the very memory and cycle intensive string matching
+// 
+// ON ESP-8266 the ?-wildcard pattern is not supported.
 //
 //	Supported pattens:
 //
@@ -13,9 +18,12 @@
 //
 //	/Unit3/Action/Something		/Unit3/Action/Something
 //
-//	/Unit_/Preset				/Unit1/Preset
+//	/Unit?/Preset				/Unit1/Preset
 //								/Unit2/Preset
 //								/Unit3/Preset
+//
+// /Unit1						/Unit1/Preset
+//								/Unit1/Preset/a
 //
 //	/*							/Unit1
 //								/Unit2
@@ -40,7 +48,7 @@
 //	Algorithm
 //
 //	1. Full match
-//	2. Contains double slash, * or _?
+//	2. Contains double slash, asterisk or question mark?
 //		1. Validate most left section, strip part and restart
 //		2. Go until pattern is empty.
 //
@@ -50,25 +58,23 @@
 
 #define OSCdevider "/"
 #define OSCwildcardFullMatch "*"
-#define OSCwildcardSingleMatch "_"
+#define OSCwildcardSingleMatch "?"
 
 namespace OSC {
 	class Match
 	{
 	public:
-
+		
 		bool isMatch(const char * address, const char * pattern, int addressOffset = 0, int patternOffset = 0) {
-			bool result = false;
-
 			if (strcmp(address, pattern) == 0) {
-				result = true;
+				return true;
 			}
 			else {
 				int addressLength = strlen(address) + 1;
 
 				if (addressLength > _bufferLength) {
-					delete[] _patternBuffer;
-					delete[] _addressBuffer;
+					delete _patternBuffer;
+					delete _addressBuffer;
 
 					_bufferLength = addressLength + 4;
 
@@ -110,24 +116,27 @@ namespace OSC {
 							bool addressCanContinue = (strlen(address) > addressOffset + strlen(addressPart) + 1);
 
 							if (addressCanContinue && patternCanContinue) {
-								result = isMatch(address, pattern, addressOffset + strlen(addressPart) + 1, patternOffset + strlen(patternPart) + 1);
+								return isMatch(address, pattern, addressOffset + strlen(addressPart) + 1, patternOffset + strlen(patternPart) + 1);
+							}
+							else if (addressCanContinue && !patternCanContinue) {
+								return true;
 							}
 							else {
-								result = (!addressCanContinue && !patternCanContinue);
+								return (!addressCanContinue && !patternCanContinue);
 							}
 						}
 					}
 				}
 			}
 
-			return result;
+			return false;
 		}
 
 		inline bool isWildcardMatch(const char * address, const char * pattern) {
 			int patternLength = strlen(pattern) + 1;
 
 			if (patternLength > _replacedAddressBufferLength) {
-				delete[] _replacedAddressBuffer;
+				delete _replacedAddressBuffer;
 
 				_replacedAddressBufferLength = patternLength + 4;
 
@@ -149,11 +158,11 @@ namespace OSC {
 		}
 
 	private:
-		char * _replacedAddressBuffer = new char[4];
-		int _replacedAddressBufferLength = 4;
+		char * _replacedAddressBuffer = new char[16];
+		int _replacedAddressBufferLength = 16;
 
-		char * _patternBuffer = new char[4];
-		char * _addressBuffer = new char[4];
-		int _bufferLength = 4;
+		char * _patternBuffer = new char[16];
+		char * _addressBuffer = new char[16];
+		int _bufferLength = 16;
 	};
 };
