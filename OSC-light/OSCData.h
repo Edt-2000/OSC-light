@@ -10,6 +10,7 @@ namespace OSC {
 		DataType type;
 
 		union data {
+		public:
 			float f;
 #ifdef _MSC_VER
 			short i;

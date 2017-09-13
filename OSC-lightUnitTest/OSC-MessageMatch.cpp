@@ -4,7 +4,6 @@
 #include "Print.h"
 
 #include "..\OSC-light\OSCMessage.h"
-#include "..\OSC-light\OSCMessage.cpp"
 #include "..\OSC-light\OSCMatch.h"
 
 #include "..\OSC-light\OSCArduino.h"
@@ -12,6 +11,27 @@
 #include <chrono>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+
+struct Data {
+	int int1;
+	int int2;
+	int int3;
+	int int4;
+	int int5;
+};
+
+struct Data2 {
+	short int1;
+	float float1;
+	short int2;
+	float float2;
+};
+
+enum class DataType
+{
+	f = 1,
+	i = 2
+};
 
 namespace OSClightUnitTest
 {		
@@ -260,5 +280,57 @@ namespace OSClightUnitTest
 			Assert::IsTrue(value < 1.0, L"Speed", LINE_INFO());
 		}
 
+		TEST_METHOD(OSCReadAsEnum) {
+			auto message = OSC::Message();
+
+			message.setAddress("/Some/Address");
+			message.empty();
+			message.reserveAtLeast(2);
+			message.add<int>(1);
+			message.add<int>(2);
+
+			Assert::IsTrue(message.getEnum<DataType>(0) == DataType::f, L"Enum does not contain same value", LINE_INFO());
+			Assert::IsTrue(message.getEnum<DataType>(1) == DataType::i, L"Enum does not contain same value", LINE_INFO());
+			Assert::IsFalse(message.getEnum<DataType>(0) == DataType::i, L"Enum does not contain same value", LINE_INFO());
+			Assert::IsFalse(message.getEnum<DataType>(1) == DataType::f, L"Enum does not contain same value", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCReadAsStruct) {
+			auto message = OSC::Message();
+
+			message.setAddress("/Some/Address");
+			message.empty();
+			message.reserveAtLeast(5);
+			message.add<int>(1);
+			message.add<int>(2);
+			message.add<int>(3);
+			message.add<int>(4);
+			message.add<int>(5);
+			
+			auto data = message.readAsStruct<Data>();
+
+			Assert::AreEqual(data.int1, 1, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(data.int2, 2, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(data.int3, 3, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(data.int4, 4, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(data.int5, 5, L"Struct does not contain same value", LINE_INFO());
+
+			auto message2 = OSC::Message();
+
+			message2.setAddress("/Some/Address");
+			message2.empty();
+			message2.reserveAtLeast(5);
+			message2.add<int>(1);
+			message2.add<float>(2.345f);
+			message2.add<int>(3);
+			message2.add<float>(441910.191f);
+
+			auto data2 = message2.readAsStruct<Data2>();
+
+			Assert::AreEqual(data2.int1, (short)1, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(data2.float1, 2.345f, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(data2.int2, (short)3, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(data2.float2, 441910.191f, L"Struct does not contain same value", LINE_INFO());
+		}
 	};
 }
