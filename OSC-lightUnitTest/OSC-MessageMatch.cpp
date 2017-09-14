@@ -20,6 +20,31 @@ struct Data {
 	int int5;
 };
 
+struct DataType1 {
+	int int1;
+	int int2;
+	int int3;
+	int int4;
+};
+struct DataType2 {
+	int int1;
+	int int2;
+	int int3;
+	int int4;
+};
+struct DataType3 {
+	int int1;
+	int int2;
+	int int3;
+	int int4;
+};
+struct DataType4 {
+	int int1;
+	int int2;
+	int int3;
+	int int4;
+};
+
 struct Data2 {
 	short int1;
 	float float1;
@@ -307,7 +332,9 @@ namespace OSClightUnitTest
 			message.add<int>(4);
 			message.add<int>(5);
 			
-			auto data = message.readAsStruct<Data>();
+			auto data = Data();
+
+			message.readToStruct(&data, sizeof(Data));
 
 			Assert::AreEqual(data.int1, 1, L"Struct does not contain same value", LINE_INFO());
 			Assert::AreEqual(data.int2, 2, L"Struct does not contain same value", LINE_INFO());
@@ -325,12 +352,139 @@ namespace OSClightUnitTest
 			message2.add<int>(3);
 			message2.add<float>(441910.191f);
 
-			auto data2 = message2.readAsStruct<Data2>();
+			auto data2 = Data2();
+			
+			message2.readToStruct(&data2, sizeof(Data));
 
 			Assert::AreEqual(data2.int1, (short)1, L"Struct does not contain same value", LINE_INFO());
 			Assert::AreEqual(data2.float1, 2.345f, L"Struct does not contain same value", LINE_INFO());
 			Assert::AreEqual(data2.int2, (short)3, L"Struct does not contain same value", LINE_INFO());
 			Assert::AreEqual(data2.float2, 441910.191f, L"Struct does not contain same value", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCStagedStructs) {
+			auto message = OSC::Message();
+
+			auto type1 = DataType1();
+			auto type2 = DataType2();
+			auto type3 = DataType3();
+			auto type4 = DataType4();
+
+			message.stageStruct(1, &type1, sizeof(DataType1));
+			message.stageStruct(2, &type1, sizeof(DataType1));
+			message.stageStruct(3, &type1, sizeof(DataType1));
+			message.stageStruct(4, &type1, sizeof(DataType1));
+
+			message.setAddress("/Some/Address");
+
+			for (int i = 1; i <= 4; ++i) {
+				message.empty();
+				message.reserveAtLeast(5);
+				message.add<int>(i * 1);
+				message.add<int>(i * 1);
+				message.add<int>(i * 2);
+				message.add<int>(i * 3);
+				message.add<int>(i * 4);
+
+				auto readStruct = message.readToStageStruct<int>();
+
+				if (i == 1) {
+					Assert::AreEqual(readStruct, 1, L"Wrong enum response", LINE_INFO());
+
+					Assert::AreEqual(type1.int1, 1, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreEqual(type1.int2, 2, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreEqual(type1.int3, 3, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreEqual(type1.int4, 4, L"Struct does not contain same value", LINE_INFO());
+
+					Assert::AreNotEqual(type2.int1, 1, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type2.int2, 2, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type2.int3, 3, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type2.int4, 4, L"Struct does not contain same value", LINE_INFO());
+
+					Assert::AreNotEqual(type3.int1, 1, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type3.int2, 2, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type3.int3, 3, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type3.int4, 4, L"Struct does not contain same value", LINE_INFO());
+
+					Assert::AreNotEqual(type4.int1, 1, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type4.int2, 2, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type4.int3, 3, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type4.int4, 4, L"Struct does not contain same value", LINE_INFO());
+				}
+
+				if (i == 2) {
+					Assert::AreEqual(readStruct, 2, L"Wrong enum response", LINE_INFO());
+
+					Assert::AreEqual(type2.int1, 2, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreEqual(type2.int2, 4, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreEqual(type2.int3, 6, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreEqual(type2.int4, 8, L"Struct does not contain same value", LINE_INFO());
+
+					Assert::AreNotEqual(type1.int1, 2, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type1.int2, 4, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type1.int3, 6, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type1.int4, 8, L"Struct does not contain same value", LINE_INFO());
+
+					Assert::AreNotEqual(type3.int1, 2, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type3.int2, 4, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type3.int3, 6, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type3.int4, 8, L"Struct does not contain same value", LINE_INFO());
+
+					Assert::AreNotEqual(type4.int1, 2, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type4.int2, 4, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type4.int3, 6, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type4.int4, 8, L"Struct does not contain same value", LINE_INFO());
+				}
+
+				if (i == 3) {
+					Assert::AreEqual(readStruct, 3, L"Wrong enum response", LINE_INFO());
+
+					Assert::AreEqual(type3.int1, 3, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreEqual(type3.int2, 6, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreEqual(type3.int3, 9, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreEqual(type3.int4, 12, L"Struct does not contain same value", LINE_INFO());
+
+					Assert::AreNotEqual(type1.int1, 3, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type1.int2, 6, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type1.int3, 9, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type1.int4, 12, L"Struct does not contain same value", LINE_INFO());
+
+					Assert::AreNotEqual(type2.int1, 3, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type2.int2, 6, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type2.int3, 9, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type2.int4, 12, L"Struct does not contain same value", LINE_INFO());
+
+					Assert::AreNotEqual(type4.int1, 3, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type4.int2, 6, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type4.int3, 9, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type4.int4, 12, L"Struct does not contain same value", LINE_INFO());
+				}
+
+				if (i == 4) {
+					Assert::AreEqual(readStruct, 4, L"Wrong enum response", LINE_INFO());
+
+					Assert::AreEqual(type4.int1, 4, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreEqual(type4.int2, 8, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreEqual(type4.int3, 12, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreEqual(type4.int4, 16, L"Struct does not contain same value", LINE_INFO());
+
+					Assert::AreNotEqual(type1.int1, 4, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type1.int2, 8, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type1.int3, 12, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type1.int4, 16, L"Struct does not contain same value", LINE_INFO());
+
+					Assert::AreNotEqual(type2.int1, 4, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type2.int2, 8, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type2.int3, 12, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type2.int4, 16, L"Struct does not contain same value", LINE_INFO());
+
+					Assert::AreNotEqual(type3.int1, 4, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type3.int2, 8, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type3.int3, 12, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual(type3.int4, 16, L"Struct does not contain same value", LINE_INFO());
+				}
+			}
+
 		}
 	};
 }

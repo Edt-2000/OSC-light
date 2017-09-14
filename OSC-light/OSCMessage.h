@@ -20,14 +20,22 @@ namespace OSC {
 	private:
 		bool _validData = true;
 		static inline int _padSize(int bytes) { return (4 - (bytes & 03)) & 3; }
+		
+		char ** _stagedStructs;
+		int * _stagedStructSizes;
 
 	public:
 		Message() {
 			address = NULL;
+
+			_stagedStructs = new char*[10];
+			_stagedStructSizes = new int[10];
 		}
 		~Message() {
 			if (reservedCount > 0) {
 				delete[] data;
+				//delete _stagedStructs;
+				//delete _stagedStructSizes;
 			}
 		}
 
@@ -113,19 +121,33 @@ namespace OSC {
 
 		// Writes the values in data to the given struct type and return it
 		template <typename T>
-		T readAsStruct(int offset = 0) {
-			T dataStruct = T();
-			unsigned char * pointer = (unsigned char*)&dataStruct;
+		void readToStruct(T * dataStruct, int structSize, int offset = 0) {
+			unsigned char * pointer = (unsigned char*)dataStruct;
 
-			int size = (int)(sizeof(T) / 4);
+			int size = (int)(structSize / 4);
 
-			for (int i = offset; i < size + offset; ++i) {
+			for (int i = 0; i < size; ++i) {
 				for (int j = 0; j < 4; ++j) {
-					pointer[(i * 4) + j] = data[i].data.b[j];
+					pointer[(i * 4) + j] = data[i + offset].data.b[j];
 				}
 			}
+		}
 
-			return dataStruct;
+		template <typename T>
+		T readToStageStruct() {
+			int value = getInt(0);
+
+			readToStruct(_stagedStructs[value], _stagedStructSizes[value], 1);
+
+			return (T)value;
+		}
+
+		template <typename E, typename T>
+		void stageStruct(E valueOfFirstInt, T * dataStruct, int structSize) {
+			int firstValue = (int)valueOfFirstInt;
+
+			_stagedStructSizes[firstValue] = structSize;
+			_stagedStructs[firstValue] = (char*)dataStruct;
 		}
 
 		// Evaluates wheter the given pattern is a valid route for the message.
