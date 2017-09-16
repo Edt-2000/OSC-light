@@ -2,12 +2,18 @@
 
 namespace OSC {
 	enum class DataType {
-		f = 1, i = 2
+		Float = 1, 
+		Integer = 2
 	};
 
 	struct Data {
-	public:
-		DataType type;
+	private:
+		static inline bool _isBigEndian() {
+			const int one = 1;
+			const char sig = *(char*)&one;
+
+			return (sig == 0);
+		}
 
 		union data {
 		public:
@@ -20,6 +26,9 @@ namespace OSC {
 			unsigned char b[4];
 		} data;
 
+	public:
+		DataType type;
+
 		Data() {
 			data.f = 0.0;
 			data.i = 0;
@@ -29,7 +38,7 @@ namespace OSC {
 		void empty() {
 			data.f = 0.0;
 			data.i = 0;
-			type = DataType::i;
+			type = DataType::Integer;
 		}
 
 		// getters
@@ -46,12 +55,12 @@ namespace OSC {
 
 		// setters
 		void set(float datum) {
-			type = DataType::f;
+			type = DataType::Float;
 
 			data.f = datum;
 		}
 		void set(int datum) {
-			type = DataType::i;
+			type = DataType::Integer;
 
 			data.i = datum;
 		}
@@ -87,12 +96,5 @@ namespace OSC {
 			}
 		}
 
-	private:
-		static inline bool _isBigEndian() {
-			const int one = 1;
-			const char sig = *(char*)&one;
-
-			return (sig == 0);
-		}
 	};
 };

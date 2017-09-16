@@ -21,21 +21,35 @@ namespace OSC {
 		bool _validData = true;
 		static inline int _padSize(int bytes) { return (4 - (bytes & 03)) & 3; }
 		
-		char ** _stagedStructs;
-		int * _stagedStructSizes;
 
 	public:
+		// Length of the process buffer
+		int bufferLength = 0;
+
+		// Process buffer for writing raw UDP data
+		char * processBuffer;
+
+		// Sub process buffer for writing chucks of buffered raw UDP data
+		char * subBuffer;
+
+		// Char array containing the address 
+		char * address;
+
+		// Number of data elements in data array
+		int dataCount = 0;
+
+		// Number of data elements available in data array
+		int reservedCount = 0;
+
+		// Data buffer containing every OSC variable of this message
+		Data * data;
+
 		Message() {
 			address = NULL;
-
-			_stagedStructs = new char*[10];
-			_stagedStructSizes = new int[10];
 		}
 		~Message() {
 			if (reservedCount > 0) {
 				delete[] data;
-				//delete _stagedStructs;
-				//delete _stagedStructSizes;
 			}
 		}
 
@@ -78,7 +92,7 @@ namespace OSC {
 		// Gets the value at the given data position.
 		float getFloat(int position) {
 			if (position < dataCount) {
-				return data[position].data.f;
+				return data[position].getFloat();
 			}
 
 			return 0.0;
@@ -86,20 +100,17 @@ namespace OSC {
 		// Gets the value at the given data position.
 		int getInt(int position) {
 			if (position < dataCount) {
-				return data[position].data.i;
+				return data[position].getInt();
 			}
 
 			return 0;
 		}
-		// Sets the value in a new data position. 
-		// To improve performance, this new position should be reserved first.
-		template <typename T>
-		T getEnum(int position) {
+		DataType getDataType(int position) {
 			if (position < dataCount) {
-				return (T)data[position].data.i;
+				return data[position].type;
 			}
 
-			return (T)0;
+			return (DataType)0;
 		}
 
 		template <typename T>
@@ -117,37 +128,6 @@ namespace OSC {
 			if (location < dataCount) {
 				data[location].set(datum);
 			}
-		}
-
-		// Writes the values in data to the given struct type and return it
-		template <typename T>
-		void readToStruct(T * dataStruct, int structSize, int offset = 0) {
-			unsigned char * pointer = (unsigned char*)dataStruct;
-
-			int size = (int)(structSize / 4);
-
-			for (int i = 0; i < size; ++i) {
-				for (int j = 0; j < 4; ++j) {
-					pointer[(i * 4) + j] = data[i + offset].data.b[j];
-				}
-			}
-		}
-
-		template <typename T>
-		T readToStageStruct() {
-			int value = getInt(0);
-
-			readToStruct(_stagedStructs[value], _stagedStructSizes[value], 1);
-
-			return (T)value;
-		}
-
-		template <typename E, typename T>
-		void stageStruct(E valueOfFirstInt, T * dataStruct, int structSize) {
-			int firstValue = (int)valueOfFirstInt;
-
-			_stagedStructSizes[firstValue] = structSize;
-			_stagedStructs[firstValue] = (char*)dataStruct;
 		}
 
 		// Evaluates wheter the given pattern is a valid route for the message.
@@ -193,10 +173,10 @@ namespace OSC {
 
 			for (int i = 0; i < dataCount; ++i) {
 				switch (data[i].type) {
-				case DataType::i:
+				case DataType::Integer:
 					buffer[bufferPosition++] = 'i';
 					break;
-				case DataType::f:
+				case DataType::Float:
 					buffer[bufferPosition++] = 'f';
 					break;
 				}
@@ -251,10 +231,10 @@ namespace OSC {
 
 				switch (subBuffer[i + 1]) {
 				case 'i':
-					data[i].type = DataType::i;
+					data[i].type = DataType::Integer;
 					break;
 				case 'f':
-					data[i].type = DataType::f;
+					data[i].type = DataType::Float;
 					break;
 				}
 			}
@@ -277,26 +257,6 @@ namespace OSC {
 			}
 		}
 
-		// Length of the process buffer
-		int bufferLength = 0;
-
-		// Process buffer for writing raw UDP data
-		char * processBuffer;
-
-		// Sub process buffer for writing chucks of buffered raw UDP data
-		char * subBuffer;
-
-		// Char array containing the address 
-		char * address;
-
-		// Number of data elements in data array
-		int dataCount = 0;
-
-		// Number of data elements available in data array
-		int reservedCount = 0;
-
-		// Data buffer containing every OSC variable of this message
-		Data * data;
 
 	};
 };

@@ -3,8 +3,9 @@
 // OSC light implementation for Arduino
 
 #include "OSCMessage.h"
+#include "OSCMessageConsumer.h"
+#include "OSCMessageProducer.h"
 
-// TODO: do not include the things required for testing here
 #ifdef _MSC_VER
 #include "../OSC-lightUnitTest/Udp.h"
 #else
@@ -12,23 +13,6 @@
 #endif
 
 namespace OSC {
-
-	// OSC message producer
-	class IMessageProducer
-	{
-	public:
-		virtual void loop() = 0;
-		virtual Message * generateMessage() = 0;
-	};
-
-	// OSC message consumer
-	class IMessageConsumer
-	{
-	public:
-		virtual const char * address() = 0;
-		virtual void callback(Message *) = 0;
-	};
-
 	class Arduino
 	{
 	public:
@@ -107,8 +91,8 @@ namespace OSC {
 
 					i = 0;
 					do {
-						if (bufferMessage.isValidRoute(_oscConsumers[i]->address())) {
-							_oscConsumers[i]->callback(&bufferMessage);
+						if (bufferMessage.isValidRoute(_oscConsumers[i]->pattern())) {
+							_oscConsumers[i]->callbackMessage(&bufferMessage);
 						}
 					} while (++i < _consumers);
 
