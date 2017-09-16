@@ -64,6 +64,11 @@ namespace OSC {
 					floatValue = message->getFloat(d);
 					memcpy(dataStruct + i, &floatValue, 4);
 					break;
+
+				default:
+					intValue = 0;
+					memcpy(dataStruct + i, &intValue, 4);
+					break;
 				}
 
 				++d;

@@ -51,13 +51,29 @@ struct DataType4 {
 	int int3;
 	int int4;
 };
+struct ShortStruct {
+	int int1;
+};
+struct LongStruct {
+	int int1;
+	int int2;
+	int int3;
+	int int4;
+	int int5;
+	int int6;
+	int int7;
+	int int8;
+};
 
 enum class DataTypes
 {
 	DataType1 = 0,
 	DataType2 = 1,
 	DataType3 = 2,
-	DataType4 = 3
+	DataType4 = 3,
+
+	ShortStruct = 4,
+	LongStruct = 5
 };
 
 namespace OSClightUnitTest
@@ -506,6 +522,72 @@ namespace OSClightUnitTest
 				}
 			}
 
+		}
+
+		TEST_METHOD(OSCStagedShortStructs) {
+
+			auto shortStruct = ShortStruct();
+			
+			shortStruct.int1 = 255;
+
+			auto structCons = OSCDataConsumer();
+
+			structCons.reserveAtLeast(10);
+			structCons.stageStruct(DataTypes::ShortStruct, &shortStruct, sizeof(ShortStruct));
+
+			auto message = OSC::Message();
+			message.empty();
+			message.reserveAtLeast(5);
+			message.add<int>(4);
+			message.add<int>(1);
+			message.add<int>(2);
+			message.add<int>(3);
+			message.add<int>(4);
+
+			structCons.callbackMessage(&message);
+
+			Assert::IsTrue(structCons.calledbackEnum == DataTypes::ShortStruct, L"Wrong enum response", LINE_INFO());
+			Assert::AreEqual(shortStruct.int1, 1, L"Struct does not contain same value", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCStagedLongStructs) {
+
+			auto longStruct = LongStruct();
+
+			longStruct.int1 = 255;
+			longStruct.int2 = 255;
+			longStruct.int3 = 255;
+			longStruct.int4 = 255;
+			longStruct.int5 = 255;
+			longStruct.int6 = 255;
+			longStruct.int7 = 255;
+			longStruct.int8 = 255;
+
+			auto structCons = OSCDataConsumer();
+
+			structCons.reserveAtLeast(10);
+			structCons.stageStruct(DataTypes::LongStruct, &longStruct, sizeof(LongStruct));
+
+			auto message = OSC::Message();
+			message.empty();
+			message.reserveAtLeast(5);
+			message.add<int>(5);
+			message.add<int>(1);
+			message.add<int>(2);
+			message.add<int>(3);
+			message.add<int>(4);
+
+			structCons.callbackMessage(&message);
+
+			Assert::IsTrue(structCons.calledbackEnum == DataTypes::LongStruct, L"Wrong enum response", LINE_INFO());
+			Assert::AreEqual(longStruct.int1, 1, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(longStruct.int2, 2, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(longStruct.int3, 3, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(longStruct.int4, 4, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(longStruct.int5, 0, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(longStruct.int6, 0, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(longStruct.int7, 0, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(longStruct.int8, 0, L"Struct does not contain same value", LINE_INFO());
 		}
 	};
 }
