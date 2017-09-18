@@ -13,11 +13,11 @@
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 struct Data {
-	int int1;
-	int int2;
-	int int3;
-	int int4;
-	int int5;
+	short int1;
+	short int2;
+	short int3;
+	short int4;
+	short int5;
 };
 
 struct Data2 {
@@ -116,14 +116,6 @@ namespace OSClightUnitTest
 		OSCDataConsumer() {
 		}
 
-		void loop() {
-
-		}
-
-		OSC::Message * generateMessage() {
-			return &message;
-		}
-
 		const char * pattern() {
 			return message.address;
 		}
@@ -132,6 +124,25 @@ namespace OSClightUnitTest
 
 		void callbackEnum(DataTypes dataTypeEnum) {
 			calledbackEnum = dataTypeEnum;
+		}
+	};
+
+	class OSCDataProducer : public OSC::MessageProducer
+	{
+	public:
+		OSC::Message message;
+
+		OSCDataProducer() {
+		}
+
+		void loop() {
+
+		}
+
+		OSC::Message * generateMessage() {
+
+
+			return &message;
 		}
 	};
 
@@ -238,7 +249,7 @@ namespace OSClightUnitTest
 
 			message.send(&print);
 
-			newMessage.reserveForProcess(print.bufferSize);
+			newMessage.reserveBuffer(print.bufferSize);
 			newMessage.processBuffer = print.buffer;
 			newMessage.process();
 
@@ -253,7 +264,7 @@ namespace OSClightUnitTest
 
 			for (int i = 0; i < 1000; i++) {
 
-				newMessage.reserveForProcess(print.bufferSize);
+				newMessage.reserveBuffer(print.bufferSize);
 				newMessage.processBuffer = print.buffer;
 				newMessage.process();
 
@@ -368,11 +379,11 @@ namespace OSClightUnitTest
 
 			structCons.readToStruct(&message, (unsigned char*)&data, sizeof(Data));
 
-			Assert::AreEqual(data.int1, 1, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(data.int2, 2, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(data.int3, 3, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(data.int4, 4, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(data.int5, 5, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(data.int1, (short)1, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(data.int2, (short)2, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(data.int3, (short)3, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(data.int4, (short)4, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(data.int5, (short)5, L"Struct does not contain same value", LINE_INFO());
 		}
 
 		TEST_METHOD(OSCReadAsStruct2) {
@@ -588,6 +599,29 @@ namespace OSClightUnitTest
 			Assert::AreEqual(longStruct.int6, 0, L"Struct does not contain same value", LINE_INFO());
 			Assert::AreEqual(longStruct.int7, 0, L"Struct does not contain same value", LINE_INFO());
 			Assert::AreEqual(longStruct.int8, 0, L"Struct does not contain same value", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCSendAsStruct) {
+			auto message = OSC::Message();
+
+			message.setAddress("/Struct/Message");
+			message.empty();
+			message.reserveAtLeast(5);
+
+			auto data = Data();
+			data.int1 = 32;
+			data.int2 = 64;
+			data.int3 = 128;
+			data.int4 = 256;
+			data.int5 = 512;
+
+			message.set(0, &data, sizeof(Data));
+
+			Assert::AreEqual(message.getInt(0), 32, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(message.getInt(1), 64, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(message.getInt(2), 128, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(message.getInt(3), 256, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(message.getInt(4), 512, L"Struct does not contain same value", LINE_INFO());
 		}
 	};
 }

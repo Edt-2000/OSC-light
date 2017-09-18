@@ -51,6 +51,10 @@ namespace OSC {
 			if (reservedCount > 0) {
 				delete[] data;
 			}
+			if(bufferLength > 0) {
+				delete[] processBuffer;
+				delete[] subBuffer;
+			}
 		}
 
 		// Sets the address of the message.
@@ -90,7 +94,7 @@ namespace OSC {
 		}
 
 		// Gets the value at the given data position.
-		float getFloat(int position) {
+		inline float getFloat(int position) {
 			if (position < dataCount) {
 				return data[position].getFloat();
 			}
@@ -98,7 +102,7 @@ namespace OSC {
 			return 0.0;
 		}
 		// Gets the value at the given data position.
-		int getInt(int position) {
+		inline int getInt(int position) {
 			if (position < dataCount) {
 				return data[position].getInt();
 			}
@@ -114,7 +118,7 @@ namespace OSC {
 		}
 
 		template <typename T>
-		void add(T datum) {
+		inline void add(T datum) {
 			if (dataCount >= reservedCount) {
 				reserve(1);
 			}
@@ -124,10 +128,19 @@ namespace OSC {
 
 		// Sets the value at the given position.
 		template <typename T>
-		void set(int location, T datum) {
+		inline void set(int location, T datum) {
 			if (location < dataCount) {
 				data[location].set(datum);
 			}
+		}
+
+		template <typename T>
+		inline void set(int startLocation, T * newData, int sizeOfData) {
+			reserveAtLeast(startLocation + (sizeOfData / 4));
+
+			memcpy(data + startLocation, newData, sizeOfData);
+			
+			dataCount += sizeOfData / 4;
 		}
 
 		// Evaluates wheter the given pattern is a valid route for the message.
@@ -137,12 +150,12 @@ namespace OSC {
 		}
 
 		// Boolean to evaluate whether the message should be send.
-		bool isSendableMessage() {
+		inline bool isSendableMessage() {
 			return _validData;
 		}
 
 		// Sets whether the data of the message is valid
-		void setValidData(bool valid) {
+		inline void setValidData(bool valid) {
 			_validData = valid;
 		}
 
@@ -159,46 +172,44 @@ namespace OSC {
 			int bufferPosition = 0;
 			int bufferSize = addressLength + addressPadding + 1 + dataCount + typePadding + (dataCount * 4);
 
-			// TODO: create this buffer once
-			char * buffer = new char[bufferSize];
+			// make sure processBuffer is big enough
+			reserveBuffer(bufferSize);
 
-			strcpy(buffer, address);
+			strcpy(processBuffer, address);
 			bufferPosition = addressLength;
 
 			while (addressPadding--) {
-				buffer[bufferPosition++] = nullChar;
+				processBuffer[bufferPosition++] = nullChar;
 			}
 
-			buffer[bufferPosition++] = ',';
+			processBuffer[bufferPosition++] = ',';
 
 			for (int i = 0; i < dataCount; ++i) {
 				switch (data[i].type) {
-				case Integer:
-					buffer[bufferPosition++] = 'i';
+				case DataType::Integer:
+					processBuffer[bufferPosition++] = 'i';
 					break;
-				case Float:
-					buffer[bufferPosition++] = 'f';
+				case DataType::Float:
+					processBuffer[bufferPosition++] = 'f';
 					break;
 				}
 			}
 
 			while (typePadding--) {
-				buffer[bufferPosition++] = nullChar;
+				processBuffer[bufferPosition++] = nullChar;
 			}
 
 			for (int i = 0; i < dataCount; ++i) {
-				data[i].outputOSCData(buffer + bufferPosition);
+				data[i].outputOSCData(processBuffer + bufferPosition);
 
 				bufferPosition += 4;
 			}
 
-			print->write(buffer, bufferSize);
-
-			delete[] buffer;
+			print->write(processBuffer, bufferSize);
 		}
 
 		// Fills the data with the given data buffer.
-		// To improve performance, do not destroy instances of OSCMessage but use fill() multiple times.
+		// To improve performance, do not destroy instances of OSCMessage but use process() multiple times.
 		void process() {
 			// make sure the message is empty
 			empty();
@@ -231,10 +242,10 @@ namespace OSC {
 
 				switch (subBuffer[i + 1]) {
 				case 'i':
-					data[i].type = Integer;
+					data[i].type = DataType::Integer;
 					break;
 				case 'f':
-					data[i].type = Float;
+					data[i].type = DataType::Float;
 					break;
 				}
 			}
@@ -242,8 +253,8 @@ namespace OSC {
 			dataCount = newDataCount;
 		}
 
-		// Reserves the amount of data for use in the fill() method.
-		void reserveForProcess(int dataLength) {
+		// Reserves the amount of data for use in the process() / send() method.
+		void reserveBuffer(int dataLength) {
 			if (dataLength > bufferLength) {
 				if (bufferLength > 0) {
 					delete[] processBuffer;
@@ -256,7 +267,5 @@ namespace OSC {
 				subBuffer = new char[bufferLength];
 			}
 		}
-
-
 	};
 };

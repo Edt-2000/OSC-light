@@ -66,7 +66,7 @@ namespace OSC {
 						_udpHandle->endPacket();
 					}
 
-					message->empty();
+					message->setValidData(false);
 				}
 				++i;
 			}
@@ -81,7 +81,7 @@ namespace OSC {
 					}
 
 					// make sure buffer is big enough
-					bufferMessage.reserveForProcess(size);
+					bufferMessage.reserveBuffer(size);
 
 					// write udp data to buffer
 					_udpHandle->read(bufferMessage.processBuffer, size);

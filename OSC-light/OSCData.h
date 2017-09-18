@@ -1,13 +1,13 @@
 #pragma once
 
 namespace OSC {
-	enum DataType {
+	enum class DataType {
 		Float = 1, 
 		Integer = 2
 	};
 
 	struct Data {
-	private:
+	public:
 		static inline bool _isBigEndian() {
 			const int one = 1;
 			const char sig = *(char*)&one;
@@ -26,7 +26,6 @@ namespace OSC {
 			unsigned char b[4];
 		} data;
 
-	public:
 		DataType type;
 
 		Data() {
@@ -38,29 +37,29 @@ namespace OSC {
 		void empty() {
 			data.f = 0.0;
 			data.i = 0;
-			type = Integer;
+			type = DataType::Integer;
 		}
 
 		// getters
-		float getFloat() {
+		inline float getFloat() {
 			return data.f;
 		}
 #ifdef _MSC_VER
-		short getInt() {
+		inline short getInt() {
 #else
-		int getInt() {
+		inline int getInt() {
 #endif
 			return data.i;
 		}
 
 		// setters
-		void set(float datum) {
-			type = Float;
+		inline void set(float datum) {
+			type = DataType::Float;
 
 			data.f = datum;
 		}
-		void set(int datum) {
-			type = Integer;
+		inline void set(int datum) {
+			type = DataType::Integer;
 
 			data.i = datum;
 		}

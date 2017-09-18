@@ -52,12 +52,12 @@ namespace OSC {
 			for (int i = 0; i < structSize; i += 4) {
 				switch (message->getDataType(d)) {
 
-				case Integer:
+				case DataType::Integer:
 					intValue = message->getInt(d);
 					memcpy(dataStruct + i, &intValue, 4);
 					break;
 
-				case Float:
+				case DataType::Float:
 					floatValue = message->getFloat(d);
 					memcpy(dataStruct + i, &floatValue, 4);
 					break;
