@@ -78,7 +78,7 @@ enum class DataTypes
 
 namespace OSClightUnitTest
 {
-	class OSCProducerConsumer : public OSC::IMessageConsumer, public OSC::IMessageProducer
+	class OSCProducerConsumer : public OSC::MessageConsumer, public OSC::MessageProducer
 	{
 	public:
 		OSC::Message message;
@@ -108,7 +108,7 @@ namespace OSClightUnitTest
 		}
 	};
 
-	class OSCDataConsumer : public OSC::AMessageConsumerUsingStructs<DataTypes>
+	class OSCDataConsumer : public OSC::StructMessageConsumer<DataTypes>
 	{
 	public:
 		OSC::Message message;

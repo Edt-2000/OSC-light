@@ -2,8 +2,10 @@
 
 #include "OSCMessage.h"
 
+// TODO: implement same struct based message sending for producer
+
 namespace OSC {
-	class IMessageProducer
+	class MessageProducer
 	{
 	public:
 		virtual void loop() = 0;

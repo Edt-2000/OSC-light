@@ -1,7 +1,7 @@
 #pragma once
 
 namespace OSC {
-	enum class DataType {
+	enum DataType {
 		Float = 1, 
 		Integer = 2
 	};
@@ -38,7 +38,7 @@ namespace OSC {
 		void empty() {
 			data.f = 0.0;
 			data.i = 0;
-			type = DataType::Integer;
+			type = Integer;
 		}
 
 		// getters
@@ -55,12 +55,12 @@ namespace OSC {
 
 		// setters
 		void set(float datum) {
-			type = DataType::Float;
+			type = Float;
 
 			data.f = datum;
 		}
 		void set(int datum) {
-			type = DataType::Integer;
+			type = Integer;
 
 			data.i = datum;
 		}

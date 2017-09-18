@@ -3,7 +3,7 @@
 #include "OSCMessage.h"
 
 namespace OSC {
-	class IMessageConsumer
+	class MessageConsumer
 	{
 	public:
 		virtual const char * pattern() = 0;
@@ -11,7 +11,7 @@ namespace OSC {
 	};
 
 	template <typename Enum>
-	class AMessageConsumerUsingStructs : IMessageConsumer
+	class StructMessageConsumer : public MessageConsumer
 	{
 	private:
 		unsigned char ** _stagedStructs;
@@ -20,10 +20,10 @@ namespace OSC {
 		int _structsReserved = 0;
 
 	public:
-		AMessageConsumerUsingStructs() {
+		StructMessageConsumer() {
 		}
 
-		~AMessageConsumerUsingStructs() {
+		~StructMessageConsumer() {
 			if (_structsReserved > 0) {
 				delete _stagedStructs;
 				delete _stagedStructSizes;
@@ -44,9 +44,6 @@ namespace OSC {
 
 		// Writes the values in data to the given struct type and return it
 		void readToStruct(Message * message, unsigned char * dataStruct, int structSize, int offset = 0) {
-			int size = (int)(structSize / 4);
-			int offsetInBytes = offset * 4;
-
 			int d = offset;
 
 			int intValue;
@@ -55,12 +52,12 @@ namespace OSC {
 			for (int i = 0; i < structSize; i += 4) {
 				switch (message->getDataType(d)) {
 
-				case DataType::Integer:
+				case Integer:
 					intValue = message->getInt(d);
 					memcpy(dataStruct + i, &intValue, 4);
 					break;
 
-				case DataType::Float:
+				case Float:
 					floatValue = message->getFloat(d);
 					memcpy(dataStruct + i, &floatValue, 4);
 					break;

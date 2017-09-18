@@ -173,10 +173,10 @@ namespace OSC {
 
 			for (int i = 0; i < dataCount; ++i) {
 				switch (data[i].type) {
-				case DataType::Integer:
+				case Integer:
 					buffer[bufferPosition++] = 'i';
 					break;
-				case DataType::Float:
+				case Float:
 					buffer[bufferPosition++] = 'f';
 					break;
 				}
@@ -231,10 +231,10 @@ namespace OSC {
 
 				switch (subBuffer[i + 1]) {
 				case 'i':
-					data[i].type = DataType::Integer;
+					data[i].type = Integer;
 					break;
 				case 'f':
-					data[i].type = DataType::Float;
+					data[i].type = Float;
 					break;
 				}
 			}

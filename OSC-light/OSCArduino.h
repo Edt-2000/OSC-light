@@ -18,8 +18,8 @@ namespace OSC {
 	public:
 		Arduino() {}
 		Arduino(int consumers, int producers) {
-			_oscConsumers = new IMessageConsumer*[consumers];
-			_oscProducers = new IMessageProducer*[producers];
+			_oscConsumers = new MessageConsumer*[consumers];
+			_oscProducers = new MessageProducer*[producers];
 		}
 
 		// binds UDP handle to receive and send OSC messages 
@@ -36,12 +36,12 @@ namespace OSC {
 		}
 
 		// adds an OSC message consumer
-		void addConsumer(IMessageConsumer * consumer) {
+		void addConsumer(MessageConsumer * consumer) {
 			_oscConsumers[_consumers++] = consumer;
 		}
 
 		// adds an OSC message producer
-		void addProducer(IMessageProducer * producer) {
+		void addProducer(MessageProducer * producer) {
 			_oscProducers[_producers++] = producer;
 		}
 
@@ -111,8 +111,8 @@ namespace OSC {
 		IPAddress _exclusiveIP;
 		bool _hasExclusiveIP = false;
 
-		IMessageProducer ** _oscProducers;
-		IMessageConsumer ** _oscConsumers;
+		MessageProducer ** _oscProducers;
+		MessageConsumer ** _oscConsumers;
 
 		IPAddress _remoteIP;
 		int _remotePort;
