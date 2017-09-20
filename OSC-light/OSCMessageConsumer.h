@@ -52,6 +52,10 @@ namespace OSC {
 		StructMessageConsumer() {
 		}
 
+		StructMessageConsumer(int mappingNumber) {
+			reserveMappings(mappingNumber);
+		}
+
 		~StructMessageConsumer() {
 			if (_structsReserved > 0) {
 				delete _stagedStructs;

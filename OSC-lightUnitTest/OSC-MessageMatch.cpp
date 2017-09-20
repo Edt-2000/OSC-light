@@ -118,7 +118,7 @@ namespace OSClightUnitTest
 	public:
 		OSC::Message message;
 
-		OSCDataConsumer() {
+		OSCDataConsumer(int mappingNumber) : StructMessageConsumer(mappingNumber) {
 		}
 
 		const char * pattern() {
@@ -503,11 +503,10 @@ namespace OSClightUnitTest
 		TEST_METHOD(OSCReadAsStruct) {
 			auto message = OSC::Message();
 
-			auto structCons = OSCDataConsumer();
+			auto structCons = OSCDataConsumer(5);
 
 			message.setAddress("/Some/Address");
 			message.empty();
-			message.reserveAtLeast(5);
 			message.addInt(1);
 			message.addInt(2);
 			message.addInt(3);
@@ -528,11 +527,10 @@ namespace OSClightUnitTest
 		TEST_METHOD(OSCReadAsStruct2) {
 			auto message = OSC::Message();
 
-			auto structCons = OSCDataConsumer();
+			auto structCons = OSCDataConsumer(5);
 
 			message.setAddress("/Some/Address");
 			message.empty();
-			message.reserveAtLeast(5);
 			message.addInt(1);
 			message.addFloat(2.345f);
 			message.addInt(3);
@@ -555,9 +553,8 @@ namespace OSClightUnitTest
 			auto type3 = DataType3();
 			auto type4 = DataType4();
 
-			auto structCons = OSCDataConsumer();
+			auto structCons = OSCDataConsumer(4);
 
-			structCons.reserveMappings(4);
 			structCons.addEnumToStructMapping<DataType1>(DataTypes::DataType1, &type1);
 			structCons.addEnumToStructMapping<DataType2>(DataTypes::DataType2, &type2);
 			structCons.addEnumToStructMapping<DataType3>(DataTypes::DataType3, &type3);
@@ -682,9 +679,8 @@ namespace OSClightUnitTest
 			auto type3 = DataType3();
 			auto type4 = DataType4();
 
-			auto structCons = OSCDataConsumer();
+			auto structCons = OSCDataConsumer(0);
 
-			//structCons.reserveAtLeast(4);
 			structCons.addEnumToStructMapping<DataType1>(DataTypes::DataType1, &type1);
 			structCons.addEnumToStructMapping<DataType2>(DataTypes::DataType2, &type2);
 			structCons.addEnumToStructMapping<DataType3>(DataTypes::DataType3, &type3);
@@ -808,9 +804,8 @@ namespace OSClightUnitTest
 
 			shortStruct.int1 = 255;
 
-			auto structCons = OSCDataConsumer();
+			auto structCons = OSCDataConsumer(10);
 
-			structCons.reserveMappings(10);
 			structCons.addEnumToStructMapping<ShortStruct>(DataTypes::ShortStruct, &shortStruct);
 
 			auto message = OSC::Message();
@@ -841,9 +836,8 @@ namespace OSClightUnitTest
 			longStruct.int7 = 255;
 			longStruct.int8 = 255;
 
-			auto structCons = OSCDataConsumer();
+			auto structCons = OSCDataConsumer(10);
 
-			structCons.reserveMappings(10);
 			structCons.addEnumToStructMapping<LongStruct>(DataTypes::LongStruct, &longStruct);
 
 			auto message = OSC::Message();

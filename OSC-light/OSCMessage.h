@@ -52,6 +52,11 @@ namespace OSC {
 		Message() {
 			address = NULL;
 		}
+		Message(int dataNumber) {
+			address = NULL;
+
+			reserveAtLeast(dataNumber);
+		}
 		~Message() {
 			if (reservedCount > 0) {
 				delete[] data;
