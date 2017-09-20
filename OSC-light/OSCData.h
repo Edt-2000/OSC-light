@@ -11,11 +11,7 @@ namespace OSC {
 		union data {
 		public:
 			float f;
-#ifdef _MSC_VER
-			short i;
-#else
-			int32_t i;
-#endif
+			uint32_t i;
 			unsigned char b[4];
 		} data;
 
@@ -25,6 +21,7 @@ namespace OSC {
 		Data() {
 			data.f = 0.0;
 			data.i = 0;
+			type = (DataType)0;
 		}
 
 		// resetter
@@ -38,11 +35,7 @@ namespace OSC {
 		inline float getFloat() {
 			return data.f;
 		}
-#ifdef _MSC_VER
-		inline short getInt() {
-#else
-		inline int getInt() {
-#endif
+		inline uint32_t getInt() {
 			return data.i;
 		}
 		inline DataType getDataType() {
@@ -55,19 +48,35 @@ namespace OSC {
 		}
 
 		// setters
-		inline void set(const float datum) {
+		inline void setFloat(const float datum) {
 			type = DataType::Float;
 
 			data.f = datum;
 		}
-		inline void set(const int datum) {
+		inline void setInt(const uint32_t datum) {
 			type = DataType::Integer;
 
 			data.i = datum;
 		}
 		inline void set(const unsigned char * bytes, DataType dataType) {
-			memcpy(data.b, bytes, 4);
 			type = dataType;
+
+			memcpy(data.b, bytes, 4);
+		}
+		inline void set(const unsigned char * bytes) {
+			memcpy(data.b, bytes, 4);
+
+			// detect which type it is
+			// HACK: is this the best method to determine if it is a float?
+			if(type == (DataType)0) {
+				float f = data.f;
+				if (f + 1 == 1) {
+					type = DataType::Integer;
+				}
+				else {
+					type = DataType::Float;
+				}
+			}
 		}
 	};
 };

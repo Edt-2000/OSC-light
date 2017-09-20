@@ -73,19 +73,27 @@ namespace OSC {
 		}
 
 		// Reserves the specified amount of OSCData elements to avoid multiple reallocations of the buffer.
-		// Deletes the current OSCDatas and creates new ones. Use before add<T>()!
 		void reserve(int count) {
-			// TODO: keep data when expanding array
+			Data * tempBuffer;
+
 			if (reservedCount > 0) {
+				tempBuffer = new Data[reservedCount];
+				memcpy(tempBuffer, data, reservedCount * sizeof(Data));
 				delete[] data;
 			}
+
 			reservedCount += count;
 			data = new Data[reservedCount];
+
+			if (reservedCount > count) {
+				memcpy(data, tempBuffer, (reservedCount - count) * sizeof(Data));
+				delete tempBuffer;
+			}
 		}
 
 		// Reserves the specified amount of OSCData elements to avoid multiple reallocations of the buffer.
-		// Deletes the current OSCDatas and creates new ones, only when current reserved count is smaller than given count. Use before add<T>()!
-		void reserveAtLeast(int count) {
+		// Deletes the current OSCDatas and creates new ones, only when current reserved count is smaller than given count. Use before multiple adds or sets!
+		inline void reserveAtLeast(int count) {
 			if (reservedCount < count) {
 				reserve(count - reservedCount);
 			}
@@ -100,56 +108,82 @@ namespace OSC {
 		}
 
 		inline float getFloat(int position) {
-			if (position < dataCount) {
+			if (position < reservedCount) {
 				return data[position].getFloat();
 			}
 
 			return 0.0;
 		}
-		inline int getInt(int position) {
-			if (position < dataCount) {
+		inline uint32_t getInt(int position) {
+			if (position < reservedCount) {
 				return data[position].getInt();
 			}
 
 			return 0;
 		}
 		DataType getDataType(int position) {
-			if (position < dataCount) {
+			if (position < reservedCount) {
 				return data[position].getDataType();
 			}
 
 			return (DataType)0;
 		}
 
-		template <typename T>
-		inline void add(T datum) {
-			if (dataCount >= reservedCount) {
-				reserve(1);
-			}
+		// Add the given value the next free slot
+		inline void addInt(uint32_t datum) {
+			reserveAtLeast(dataCount + 1);
+			data[dataCount++].setInt(datum);
+		}
 
-			data[dataCount++].set(datum);
+		// Add the given value the next free slot
+		inline void addFloat(float datum) {
+			reserveAtLeast(dataCount + 1);
+			data[dataCount++].setFloat(datum);
+		}
+
+		// Adds the given struct from the netxt free slot
+		template <typename T>
+		inline void add(T * newData, DataType * types = NULL) {
+			reserveAtLeast(dataCount + 1 + (sizeof(T) / 4));
+			
+			set<T>(dataCount, newData, types);
+
+			dataCount += sizeof(T) / 4;
 		}
 
 		// Sets the value at the given position.
-		template <typename T>
-		inline void set(int location, T datum) {
-			if (location < dataCount) {
-				data[location].set(datum);
-			}
+		inline void setInt(int location, uint32_t datum) {
+			reserveAtLeast(location + 1);
+			data[location].setInt(datum);
 		}
 
+		// Sets the value at the given position.
+		inline void setFloat(int location, float datum) {
+			reserveAtLeast(location + 1);
+			data[location].setFloat(datum);
+		}
+
+		// Sets the given struct from the given position
 		template <typename T>
-		inline void set(int startLocation, T * newData, int sizeOfData) {
-			reserveAtLeast(startLocation + (sizeOfData / 4));
+		inline void set(int startLocation, T * newData, DataType * types = NULL) {
+			reserveAtLeast(startLocation + 1 + (sizeof(T) / 4));
 
-			int d = startLocation;
-			for (int i = 0; i < sizeOfData; i += 4) {
-				data[d].set((unsigned char *)newData + i, data[d].getDataType());
+			int d = 0;
 
-				++d;
+			if (types != NULL) {
+				for (unsigned int i = 0; i < sizeof(T); i += 4) {
+					data[startLocation + d].set((unsigned char *)newData + i, types[startLocation + d]);
+
+					++d;
+				}
 			}
-			
-			dataCount += sizeOfData / 4;
+			else {
+				for (unsigned int i = 0; i < sizeof(T); i += 4) {
+					data[startLocation + d].set((unsigned char *)newData + i);
+
+					++d;
+				}
+			}
 		}
 
 		// Evaluates wheter the given pattern is a valid route for the message.
@@ -174,13 +208,13 @@ namespace OSC {
 			char nullChar = '\0';
 			int addressLength = strlen(address) + 1;
 			int addressPadding = _padSize(addressLength);
-			int typePadding = _padSize(dataCount + 1);
+			int typePadding = _padSize(reservedCount + 1);
 			if (typePadding == 0) {
 				typePadding = 4;
 			}
 
 			int bufferPosition = 0;
-			int bufferSize = addressLength + addressPadding + 1 + dataCount + typePadding + (dataCount * 4);
+			int bufferSize = addressLength + addressPadding + 1 + reservedCount + typePadding + (reservedCount * 4);
 
 			// make sure processBuffer is big enough
 			reserveBuffer(bufferSize);
@@ -195,13 +229,14 @@ namespace OSC {
 
 			processBuffer[bufferPosition++] = ',';
 
-			for (int i = 0; i < dataCount; ++i) {
+			for (int i = 0; i < reservedCount; ++i) {
 				switch (data[i].getDataType()) {
-				case DataType::Integer:
-					processBuffer[bufferPosition++] = 'i';
-					break;
 				case DataType::Float:
 					processBuffer[bufferPosition++] = 'f';
+					break;
+				case DataType::Integer:
+				default:
+					processBuffer[bufferPosition++] = 'i';
 					break;
 				}
 			}
@@ -210,9 +245,9 @@ namespace OSC {
 				processBuffer[bufferPosition++] = nullChar;
 			}
 
-			if (platformIsBigEndian) {
+			if (!platformIsBigEndian) {
 				char readBuffer[4];
-				for (int i = 0; i < dataCount; ++i) {
+				for (int i = 0; i < reservedCount; ++i) {
 					data[i].get(readBuffer);
 
 					for (int d = 0; d < 4; ++d) {
@@ -223,7 +258,7 @@ namespace OSC {
 				}
 			}
 			else {
-				for (int i = 0; i < dataCount; ++i) {
+				for (int i = 0; i < reservedCount; ++i) {
 					data[i].get(processBuffer + bufferPosition);
 
 					bufferPosition += 4;
@@ -262,7 +297,7 @@ namespace OSC {
 			typeLength = strlen(subBuffer) + 1;
 			dataStart = typeStart + typeLength + _padSize(typeLength);
 
-			if (platformIsBigEndian) {
+			if (!platformIsBigEndian) {
 				char buffer[4];
 
 				// reverse all the data in the process buffer

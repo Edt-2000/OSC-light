@@ -8,6 +8,7 @@
 
 #ifdef _MSC_VER
 #include "../OSC-lightUnitTest/Udp.h"
+typedef unsigned int uint32_t;
 #else
 #include <Udp.h>
 #endif

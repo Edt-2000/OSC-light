@@ -19,6 +19,35 @@ namespace OSC {
 
 		int _structsReserved = 0;
 
+		void _reserve(int count) {
+			unsigned char ** tempStructs;
+			int * tempStructSizes;
+
+			if (_structsReserved > 0) {
+				tempStructs = new unsigned char*[_structsReserved];
+				tempStructSizes = new int[_structsReserved];
+
+				memcpy(tempStructs, _stagedStructs, sizeof(unsigned char *) * _structsReserved);
+				memcpy(tempStructSizes, _stagedStructSizes, sizeof(int *) * _structsReserved);
+
+				delete _stagedStructs;
+				delete _stagedStructSizes;
+			}
+
+			_structsReserved = _structsReserved + count;
+
+			_stagedStructs = new unsigned char*[_structsReserved];
+			_stagedStructSizes = new int[_structsReserved];
+
+			if (_structsReserved - count > 0) {
+				memcpy(_stagedStructs, tempStructs, sizeof(unsigned char *) * (_structsReserved - count));
+				memcpy(_stagedStructSizes, tempStructSizes, sizeof(int *) * (_structsReserved - count));
+
+				delete tempStructs;
+				delete tempStructSizes;
+			}
+		}
+
 	public:
 		StructMessageConsumer() {
 		}
@@ -46,7 +75,7 @@ namespace OSC {
 		void readToStruct(Message * message, unsigned char * dataStruct, int structSize, int offset = 0) {
 			int d = offset;
 
-			int intValue;
+			uint32_t intValue;
 			float floatValue;
 
 			for (int i = 0; i < structSize; i += 4) {
@@ -72,26 +101,20 @@ namespace OSC {
 			}
 		}
 
-		void reserveAtLeast(int numberOfStructs) {
-			if (_structsReserved < numberOfStructs) {
-				if (_structsReserved > 0) {
-					delete _stagedStructs;
-					delete _stagedStructSizes;
-				}
-
-				_structsReserved = numberOfStructs;
+		void reserveMappings(int number) {
+			if (number > _structsReserved) {
+				_reserve(number - _structsReserved);
 			}
-
-			_stagedStructs = new unsigned char*[_structsReserved];
-			_stagedStructSizes = new int[_structsReserved];
 		}
 
 		template <typename Struct>
-		void stageStruct(Enum valueOfFirstInt, Struct * dataStruct, int structSize) {
+		void addEnumToStructMapping(Enum valueOfFirstInt, Struct * dataStruct) {
 			int firstValue = (int)valueOfFirstInt;
 
+			reserveMappings(firstValue + 1);
+
 			if (firstValue < _structsReserved) {
-				_stagedStructSizes[firstValue] = structSize;
+				_stagedStructSizes[firstValue] = sizeof(Struct);
 				_stagedStructs[firstValue] = (unsigned char*)dataStruct;
 			}
 		}
