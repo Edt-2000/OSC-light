@@ -13,11 +13,11 @@
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 struct Data {
-	short int1;
-	short int2;
-	short int3;
-	short int4;
-	short int5;
+	int int1;
+	int int2;
+	int int3;
+	int int4;
+	int int5;
 };
 
 struct Data2 {
@@ -273,7 +273,7 @@ namespace OSClightUnitTest
 			Assert::IsTrue(bufferLength == newMessage.bufferLength);
 		}
 
-		TEST_METHOD(OSCSerialization) {
+		TEST_METHOD(OSCSerializationBigEndian) {
 			auto message = OSC::Message();
 			auto print = Print();
 
@@ -286,14 +286,83 @@ namespace OSClightUnitTest
 			message.add<int>(4);
 			message.add<int>(5);
 
-			message.send(&print);
+			message.send(&print, true);
 
 			std::string stringFromSerialization(print.fullBuffer);
 
 			Assert::AreEqual(
-				stringFromSerialization.c_str(),
 				"/Some/Address___,iiiii_____\x1___\x2___\x3___\x4___\x5",
+				stringFromSerialization.c_str(),
 				L"Serialized data not conform spec", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCSerializationLittleEndian) {
+			auto message = OSC::Message();
+			auto print = Print();
+
+			message.setAddress("/Some/Address");
+			message.empty();
+			message.reserveAtLeast(5);
+			message.add<int>(1);
+			message.add<int>(2);
+			message.add<int>(3);
+			message.add<int>(4);
+			message.add<int>(5);
+
+			message.send(&print, false);
+
+			std::string stringFromSerialization(print.fullBuffer);
+
+			Assert::AreEqual(
+				"/Some/Address___,iiiii__\x1___\x2___\x3___\x4___\x5___",
+				stringFromSerialization.c_str(),
+				L"Serialized data not conform spec", LINE_INFO());
+		}
+
+		TEST_METHOD(OSDeserializationBigEndian) {
+			auto message = OSC::Message();
+			auto print = Print();
+
+			std::string testString = "/Some/Address___,iiiii_____\x1___\x2___\x3___\x4___\x5";
+			int length = testString.length();
+
+			print.write(testString.c_str(), length);
+
+			message.setAddress("/Some/Address");
+			message.empty();
+			message.reserveBuffer(length);
+			memcpy(message.processBuffer, print.reversedBuffer, length);
+
+			message.process(true);
+
+			Assert::AreEqual(1, message.getInt(0), L"Integers not equal", LINE_INFO());
+			Assert::AreEqual(2, message.getInt(1), L"Integers not equal", LINE_INFO());
+			Assert::AreEqual(3, message.getInt(2), L"Integers not equal", LINE_INFO());
+			Assert::AreEqual(4, message.getInt(3), L"Integers not equal", LINE_INFO());
+			Assert::AreEqual(5, message.getInt(4), L"Integers not equal", LINE_INFO());
+		}
+
+		TEST_METHOD(OSDeserializationLittleEndian) {
+			auto message = OSC::Message();
+			auto print = Print();
+
+			std::string testString = "/Some/Address___,iiiii__\x1___\x2___\x3___\x4___\x5___";
+			int length = testString.length();
+
+			print.write(testString.c_str(), length);
+
+			message.setAddress("/Some/Address");
+			message.empty();
+			message.reserveBuffer(length);
+			memcpy(message.processBuffer, print.reversedBuffer, length);
+
+			message.process(false);
+
+			Assert::AreEqual(1, message.getInt(0), L"Integers not equal", LINE_INFO());
+			Assert::AreEqual(2, message.getInt(1), L"Integers not equal", LINE_INFO());
+			Assert::AreEqual(3, message.getInt(2), L"Integers not equal", LINE_INFO());
+			Assert::AreEqual(4, message.getInt(3), L"Integers not equal", LINE_INFO());
+			Assert::AreEqual(5, message.getInt(4), L"Integers not equal", LINE_INFO());
 		}
 
 		TEST_METHOD(OSCLoop) {
@@ -379,11 +448,11 @@ namespace OSClightUnitTest
 
 			structCons.readToStruct(&message, (unsigned char*)&data, sizeof(Data));
 
-			Assert::AreEqual(data.int1, (short)1, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(data.int2, (short)2, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(data.int3, (short)3, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(data.int4, (short)4, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(data.int5, (short)5, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(data.int1, 1, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(data.int2, 2, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(data.int3, 3, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(data.int4, 4, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(data.int5, 5, L"Struct does not contain same value", LINE_INFO());
 		}
 
 		TEST_METHOD(OSCReadAsStruct2) {
@@ -601,12 +670,10 @@ namespace OSClightUnitTest
 			Assert::AreEqual(longStruct.int8, 0, L"Struct does not contain same value", LINE_INFO());
 		}
 
-		TEST_METHOD(OSCSendAsStruct) {
+		TEST_METHOD(OSCSendAsIntStruct) {
 			auto message = OSC::Message();
 
 			message.setAddress("/Struct/Message");
-			message.empty();
-			message.reserveAtLeast(5);
 
 			auto data = Data();
 			data.int1 = 32;
@@ -622,6 +689,25 @@ namespace OSClightUnitTest
 			Assert::AreEqual(message.getInt(2), 128, L"Struct does not contain same value", LINE_INFO());
 			Assert::AreEqual(message.getInt(3), 256, L"Struct does not contain same value", LINE_INFO());
 			Assert::AreEqual(message.getInt(4), 512, L"Struct does not contain same value", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCSendAsFloatStruct) {
+			auto message = OSC::Message();
+
+			message.setAddress("/Struct/Message");
+
+			auto data = Data2();
+			data.int1 = 32;
+			data.int2 = 64;
+			data.float1 = 31124.12351f;
+			data.float2 = 0.000198178f;
+
+			message.set(0, &data, sizeof(Data2));
+
+			Assert::AreEqual(message.getInt(0), 32, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(message.getFloat(1), 31124.12351f, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(message.getInt(2), 64, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(message.getFloat(3), 0.000198178f, L"Struct does not contain same value", LINE_INFO());
 		}
 	};
 }

@@ -2,19 +2,12 @@
 
 namespace OSC {
 	enum class DataType {
-		Float = 1, 
+		Float = 1,
 		Integer = 2
 	};
 
 	struct Data {
-	public:
-		static inline bool _isBigEndian() {
-			const int one = 1;
-			const char sig = *(char*)&one;
-
-			return (sig == 0);
-		}
-
+	private:
 		union data {
 		public:
 			float f;
@@ -28,6 +21,7 @@ namespace OSC {
 
 		DataType type;
 
+	public:
 		Data() {
 			data.f = 0.0;
 			data.i = 0;
@@ -51,49 +45,29 @@ namespace OSC {
 #endif
 			return data.i;
 		}
+		inline DataType getDataType() {
+			return type;
+		}
+		inline void get(char * output) {
+			for (int i = 0; i < 4; ++i) {
+				output[i] = data.b[i];
+			}
+		}
 
 		// setters
-		inline void set(float datum) {
+		inline void set(const float datum) {
 			type = DataType::Float;
 
 			data.f = datum;
 		}
-		inline void set(int datum) {
+		inline void set(const int datum) {
 			type = DataType::Integer;
 
 			data.i = datum;
 		}
-
-		void outputOSCData(char * output) {
-			int chr = 0;
-
-			if (_isBigEndian()) {
-				for (int i = 0; i < 4; ++i) {
-					output[chr++] = data.b[i];
-				}
-			}
-			else {
-				for (int i = 3; i >= 0; --i) {
-					output[chr++] = data.b[i];
-				}
-			}
-
+		inline void set(const unsigned char * bytes, DataType dataType) {
+			memcpy(data.b, bytes, 4);
+			type = dataType;
 		}
-
-		void inputOSCData(const char * input) {
-			int chr = 0;
-
-			if (_isBigEndian()) {
-				for (int i = 0; i < 4; ++i) {
-					data.b[chr++] = input[i];
-				}
-			}
-			else {
-				for (int i = 3; i >= 0; --i) {
-					data.b[chr++] = input[i];
-				}
-			}
-		}
-
 	};
 };
