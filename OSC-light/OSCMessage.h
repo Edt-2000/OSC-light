@@ -92,7 +92,7 @@ namespace OSC {
 
 			if (reservedCount > count) {
 				memcpy(data, tempBuffer, (reservedCount - count) * sizeof(Data));
-				delete tempBuffer;
+				delete[] tempBuffer;
 			}
 		}
 

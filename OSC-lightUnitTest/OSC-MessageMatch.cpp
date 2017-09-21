@@ -93,7 +93,7 @@ namespace OSClightUnitTest
 			message.setAddress("/Some/Test/Address");
 			message.reserveAtLeast(2);
 			message.addInt(32676);
-			message.addInt(123.456f);
+			message.addFloat(123.456f);
 		}
 
 		void loop() {

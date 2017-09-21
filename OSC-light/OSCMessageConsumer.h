@@ -43,8 +43,8 @@ namespace OSC {
 				memcpy(_stagedStructs, tempStructs, sizeof(unsigned char *) * (_structsReserved - count));
 				memcpy(_stagedStructSizes, tempStructSizes, sizeof(int *) * (_structsReserved - count));
 
-				delete tempStructs;
-				delete tempStructSizes;
+				delete[] tempStructs;
+				delete[] tempStructSizes;
 			}
 		}
 
