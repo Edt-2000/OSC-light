@@ -2,96 +2,81 @@
 
 namespace OSC {
 	enum class DataType {
-		f = 1, i = 2
+		Float = 1,
+		Integer = 2
 	};
 
 	struct Data {
-	public:
-		DataType type;
-
+	private:
 		union data {
+		public:
 			float f;
-#ifdef _MSC_VER
-			short i;
-#else
-			int32_t i;
-#endif
+			uint32_t i;
 			unsigned char b[4];
 		} data;
 
+		DataType type;
+
+	public:
 		Data() {
 			data.f = 0.0;
 			data.i = 0;
+			type = (DataType)0;
 		}
 
 		// resetter
 		void empty() {
 			data.f = 0.0;
 			data.i = 0;
-			type = DataType::i;
+			type = DataType::Integer;
 		}
 
 		// getters
-		float getFloat() {
+		inline float getFloat() {
 			return data.f;
 		}
-#ifdef _MSC_VER
-		short getInt() {
-#else
-		int getInt() {
-#endif
+		inline uint32_t getInt() {
 			return data.i;
+		}
+		inline DataType getDataType() {
+			return type;
+		}
+		inline void get(char * output) {
+			for (int i = 0; i < 4; ++i) {
+				output[i] = data.b[i];
+			}
 		}
 
 		// setters
-		void set(float datum) {
-			type = DataType::f;
+		inline void setFloat(const float datum) {
+			type = DataType::Float;
 
 			data.f = datum;
 		}
-		void set(int datum) {
-			type = DataType::i;
+		inline void setInt(const uint32_t datum) {
+			type = DataType::Integer;
 
 			data.i = datum;
 		}
+		inline void set(const unsigned char * bytes, DataType dataType) {
+			type = dataType;
 
-		void outputOSCData(char * output) {
-			int chr = 0;
-
-			if (_isBigEndian()) {
-				for (int i = 0; i < 4; ++i) {
-					output[chr++] = data.b[i];
-				}
-			}
-			else {
-				for (int i = 3; i >= 0; --i) {
-					output[chr++] = data.b[i];
-				}
-			}
-
+			memcpy(data.b, bytes, 4);
 		}
+		inline void set(const unsigned char * bytes) {
+			memcpy(data.b, bytes, 4);
 
-		void inputOSCData(const char * input) {
-			int chr = 0;
-
-			if (_isBigEndian()) {
-				for (int i = 0; i < 4; ++i) {
-					data.b[chr++] = input[i];
+			// detect which type it is
+			// HACK: is this the best method to determine if it is a float?
+			if(type == (DataType)0) {
+				float f = data.f;
+				if (f + 1 == 1) {
+					type = DataType::Integer;
+				}
+				else {
+					type = DataType::Float;
 				}
 			}
-			else {
-				for (int i = 3; i >= 0; --i) {
-					data.b[chr++] = input[i];
-				}
-			}
-		}
-
-	private:
-		static inline bool _isBigEndian() {
-			const int one = 1;
-			const char sig = *(char*)&one;
-
-			return (sig == 0);
 		}
 	};
 };

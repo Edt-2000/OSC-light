@@ -3,39 +3,24 @@
 // OSC light implementation for Arduino
 
 #include "OSCMessage.h"
+#include "OSCMessageConsumer.h"
+#include "OSCMessageProducer.h"
 
-// TODO: do not include the things required for testing here
 #ifdef _MSC_VER
 #include "../OSC-lightUnitTest/Udp.h"
+typedef unsigned int uint32_t;
 #else
 #include <Udp.h>
 #endif
 
 namespace OSC {
-
-	// OSC message producer
-	class IMessageProducer
-	{
-	public:
-		virtual void loop() = 0;
-		virtual Message * generateMessage() = 0;
-	};
-
-	// OSC message consumer
-	class IMessageConsumer
-	{
-	public:
-		virtual const char * address() = 0;
-		virtual void callback(Message *) = 0;
-	};
-
 	class Arduino
 	{
 	public:
 		Arduino() {}
 		Arduino(int consumers, int producers) {
-			_oscConsumers = new IMessageConsumer*[consumers];
-			_oscProducers = new IMessageProducer*[producers];
+			_oscConsumers = new MessageConsumer*[consumers];
+			_oscProducers = new MessageProducer*[producers];
 		}
 
 		// binds UDP handle to receive and send OSC messages 
@@ -52,12 +37,12 @@ namespace OSC {
 		}
 
 		// adds an OSC message consumer
-		void addConsumer(IMessageConsumer * consumer) {
+		void addConsumer(MessageConsumer * consumer) {
 			_oscConsumers[_consumers++] = consumer;
 		}
 
 		// adds an OSC message producer
-		void addProducer(IMessageProducer * producer) {
+		void addProducer(MessageProducer * producer) {
 			_oscProducers[_producers++] = producer;
 		}
 
@@ -82,7 +67,7 @@ namespace OSC {
 						_udpHandle->endPacket();
 					}
 
-					message->empty();
+					message->setValidData(false);
 				}
 				++i;
 			}
@@ -97,7 +82,7 @@ namespace OSC {
 					}
 
 					// make sure buffer is big enough
-					bufferMessage.reserveForProcess(size);
+					bufferMessage.reserveBuffer(size);
 
 					// write udp data to buffer
 					_udpHandle->read(bufferMessage.processBuffer, size);
@@ -107,8 +92,8 @@ namespace OSC {
 
 					i = 0;
 					do {
-						if (bufferMessage.isValidRoute(_oscConsumers[i]->address())) {
-							_oscConsumers[i]->callback(&bufferMessage);
+						if (bufferMessage.isValidRoute(_oscConsumers[i]->pattern())) {
+							_oscConsumers[i]->callbackMessage(&bufferMessage);
 						}
 					} while (++i < _consumers);
 
@@ -127,8 +112,8 @@ namespace OSC {
 		IPAddress _exclusiveIP;
 		bool _hasExclusiveIP = false;
 
-		IMessageProducer ** _oscProducers;
-		IMessageConsumer ** _oscConsumers;
+		MessageProducer ** _oscProducers;
+		MessageConsumer ** _oscConsumers;
 
 		IPAddress _remoteIP;
 		int _remotePort;

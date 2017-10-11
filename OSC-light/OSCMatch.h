@@ -63,6 +63,14 @@
 namespace OSC {
 	class Match
 	{
+	private:
+		char * _replacedAddressBuffer = new char[16];
+		int _replacedAddressBufferLength = 16;
+
+		char * _patternBuffer = new char[16];
+		char * _addressBuffer = new char[16];
+		int _bufferLength = 16;
+
 	public:
 		
 		bool isMatch(const char * address, const char * pattern, int addressOffset = 0, int patternOffset = 0) {
@@ -156,13 +164,5 @@ namespace OSC {
 
 			return strncmp(_replacedAddressBuffer, pattern, patternLength) == 0;
 		}
-
-	private:
-		char * _replacedAddressBuffer = new char[16];
-		int _replacedAddressBufferLength = 16;
-
-		char * _patternBuffer = new char[16];
-		char * _addressBuffer = new char[16];
-		int _bufferLength = 16;
 	};
 };
