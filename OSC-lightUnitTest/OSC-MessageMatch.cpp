@@ -97,10 +97,11 @@ namespace OSClightUnitTest
 		}
 
 		void loop() {
-
+			message.setValidData(true);
 		}
 
 		OSC::Message * generateMessage() {
+			message.setValidData(true);
 			return &message;
 		}
 
@@ -126,9 +127,11 @@ namespace OSClightUnitTest
 		}
 
 		DataTypes calledbackEnum;
+		int callbackCallCount = 0;
 
 		void callbackEnum(DataTypes dataTypeEnum) {
 			calledbackEnum = dataTypeEnum;
+			callbackCallCount++;
 		}
 	};
 
@@ -442,6 +445,32 @@ namespace OSClightUnitTest
 			auto prodCons = OSCProducerConsumer();
 
 			OSC.bindUDP(&Udp, 1, 1);
+
+			OSC.addConsumer(&prodCons);
+			OSC.addProducer(&prodCons);
+
+			// complete a full write and a full read write and then store buffer sizes
+			OSC.loop(true);
+			OSC.loop(true);
+
+			int bufferSizePre = OSC.bufferMessage.bufferLength;
+
+			for (int i = 0; i < 1000; i++) {
+				OSC.loop(true);
+			}
+
+			int bufferSizePost = OSC.bufferMessage.bufferLength;
+
+			Assert::AreEqual(bufferSizePre, bufferSizePost, L"Buffer message buffers not equal after 1000 loops", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCLoopStream) {
+			auto OSC = OSC::Arduino(1, 1);
+			auto stream = Stream();
+
+			auto prodCons = OSCProducerConsumer();
+
+			OSC.bindStream(&stream);
 
 			OSC.addConsumer(&prodCons);
 			OSC.addProducer(&prodCons);
@@ -820,6 +849,35 @@ namespace OSClightUnitTest
 			structCons.callbackMessage(&message);
 
 			Assert::IsTrue(structCons.calledbackEnum == DataTypes::ShortStruct, L"Wrong enum response", LINE_INFO());
+			Assert::AreEqual(1u, shortStruct.int1, L"Struct does not contain same value", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCCorrectStagedShortStructs) {
+
+			auto shortStruct = ShortStruct();
+
+			shortStruct.int1 = 255;
+
+			auto structCons = OSCDataConsumer(10);
+
+			structCons.addEnumToStructMapping<ShortStruct>(DataTypes::DataType1, &shortStruct);
+			structCons.addEnumToStructMapping<ShortStruct>(DataTypes::ShortStruct, &shortStruct);
+			structCons.addEnumToStructMapping<ShortStruct>(DataTypes::DataType2, &shortStruct);
+			structCons.addEnumToStructMapping<ShortStruct>(DataTypes::DataType4, &shortStruct);
+
+			auto message = OSC::Message();
+			message.empty();
+			message.reserveAtLeast(5);
+			message.addInt(4);
+			message.addInt(1);
+			message.addInt(2);
+			message.addInt(3);
+			message.addInt(4);
+
+			structCons.callbackMessage(&message);
+
+			Assert::IsTrue(structCons.calledbackEnum == DataTypes::ShortStruct, L"Wrong enum response", LINE_INFO());
+			Assert::IsTrue(structCons.callbackCallCount == 1, L"Too many callbacks", LINE_INFO());
 			Assert::AreEqual(1u, shortStruct.int1, L"Struct does not contain same value", LINE_INFO());
 		}
 
