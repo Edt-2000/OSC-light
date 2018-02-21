@@ -19,8 +19,8 @@ namespace OSC {
 	{
 	private:
 		bool _validData = true;
-		static inline int _padSize(int bytes) { return (4 - (bytes & 03)) & 3; }
-		static inline bool _isBigEndian() {
+		static int _padSize(int bytes) { return (4 - (bytes & 03)) & 3; }
+		static bool _isBigEndian() {
 			const int one = 1;
 			const char sig = *(char*)&one;
 
@@ -98,7 +98,7 @@ namespace OSC {
 
 		// Reserves the specified amount of OSCData elements to avoid multiple reallocations of the buffer.
 		// Deletes the current OSCDatas and creates new ones, only when current reserved count is smaller than given count. Use before multiple adds or sets!
-		inline void reserveAtLeast(int count) {
+		void reserveAtLeast(int count) {
 			if (reservedCount < count) {
 				reserve(count - reservedCount);
 			}
@@ -112,14 +112,14 @@ namespace OSC {
 			dataCount = 0;
 		}
 
-		inline float getFloat(int position) {
+		float getFloat(int position) {
 			if (position < reservedCount) {
 				return data[position].getFloat();
 			}
 
 			return 0.0;
 		}
-		inline uint32_t getInt(int position) {
+		uint32_t getInt(int position) {
 			if (position < reservedCount) {
 				return data[position].getInt();
 			}
@@ -135,20 +135,20 @@ namespace OSC {
 		}
 
 		// Add the given value the next free slot
-		inline void addInt(uint32_t datum) {
+		void addInt(uint32_t datum) {
 			reserveAtLeast(dataCount + 1);
 			data[dataCount++].setInt(datum);
 		}
 
 		// Add the given value the next free slot
-		inline void addFloat(float datum) {
+		void addFloat(float datum) {
 			reserveAtLeast(dataCount + 1);
 			data[dataCount++].setFloat(datum);
 		}
 
 		// Adds the given struct from the netxt free slot
 		template <typename T>
-		inline void add(T * newData, DataType * types = NULL) {
+		void add(T * newData, DataType * types = NULL) {
 			reserveAtLeast(dataCount + 1 + (sizeof(T) / 4));
 			
 			set<T>(dataCount, newData, types);
@@ -157,20 +157,20 @@ namespace OSC {
 		}
 
 		// Sets the value at the given position.
-		inline void setInt(int location, uint32_t datum) {
+		void setInt(int location, uint32_t datum) {
 			reserveAtLeast(location + 1);
 			data[location].setInt(datum);
 		}
 
 		// Sets the value at the given position.
-		inline void setFloat(int location, float datum) {
+		void setFloat(int location, float datum) {
 			reserveAtLeast(location + 1);
 			data[location].setFloat(datum);
 		}
 
 		// Sets the given struct from the given position
 		template <typename T>
-		inline void set(int startLocation, T * newData, DataType * types = NULL) {
+		void set(int startLocation, T * newData, DataType * types = NULL) {
 			reserveAtLeast(startLocation + 1 + (sizeof(T) / 4));
 
 			int d = 0;
@@ -198,12 +198,12 @@ namespace OSC {
 		}
 
 		// Boolean to evaluate whether the message should be send.
-		inline bool isSendableMessage() {
+		bool isSendableMessage() {
 			return _validData;
 		}
 
 		// Sets whether the data of the message is valid
-		inline void setValidData(bool valid) {
+		void setValidData(bool valid) {
 			_validData = valid;
 		}
 

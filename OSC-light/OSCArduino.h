@@ -16,6 +16,21 @@ typedef unsigned int uint32_t;
 namespace OSC {
 	class Arduino
 	{
+	private:
+		UDP * _udpHandle;
+		Stream * _serialHandle;
+
+		MessageProducer ** _oscProducers;
+		MessageConsumer ** _oscConsumers;
+
+		IPAddress _remoteIP;
+		int _remotePort;
+
+		int _producers = 0;
+		int _consumers = 0;
+
+		bool _useSerial = false;
+
 	public:
 		Arduino() {}
 		Arduino(int consumers, int producers) {
@@ -66,8 +81,6 @@ namespace OSC {
 							message->send(_udpHandle);
 							_udpHandle->endPacket();
 						}
-
-						message->setValidData(false);
 					}
 					++i;
 				}
@@ -91,12 +104,7 @@ namespace OSC {
 								_oscConsumers[i]->callbackMessage(&bufferMessage);
 							}
 						} while (++i < _consumers);
-
-						_udpHandle->flush();
 					}
-				}
-				else {
-					_udpHandle->flush();
 				}
 			}
 			else {
@@ -111,8 +119,6 @@ namespace OSC {
 						if (message->isSendableMessage()) {
 							message->send(_serialHandle);
 						}
-
-						message->setValidData(false);
 					}
 					++i;
 				}
@@ -136,31 +142,11 @@ namespace OSC {
 								_oscConsumers[i]->callbackMessage(&bufferMessage);
 							}
 						} while (++i < _consumers);
-
-						//_serialHandle->flush();
 					}
-				}
-				else {
-					_serialHandle->flush();
 				}
 			}
 		}
 
 		Message bufferMessage = Message();
-
-	private:
-		UDP * _udpHandle;
-		Stream * _serialHandle;
-
-		MessageProducer ** _oscProducers;
-		MessageConsumer ** _oscConsumers;
-
-		IPAddress _remoteIP;
-		int _remotePort;
-
-		int _producers = 0;
-		int _consumers = 0;
-
-		bool _useSerial = false;
 	};
 }

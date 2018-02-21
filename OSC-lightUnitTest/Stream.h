@@ -17,6 +17,8 @@ public:
 		return bufferSize;
 	}
 
+	void println(char * string) {}
+
 	void readBytes(char * buffer, int size) {
 		if (this->bufferSize > 0) {
 			memcpy_s(buffer, size, this->buffer, this->bufferSize);
