@@ -32,38 +32,38 @@ namespace OSC {
 		}
 
 		// getters
-		inline float getFloat() {
+		float getFloat() {
 			return data.f;
 		}
-		inline uint32_t getInt() {
+		uint32_t getInt() {
 			return data.i;
 		}
-		inline DataType getDataType() {
+		DataType getDataType() {
 			return type;
 		}
-		inline void get(char * output) {
+		void get(char * output) {
 			for (int i = 0; i < 4; ++i) {
 				output[i] = data.b[i];
 			}
 		}
 
 		// setters
-		inline void setFloat(const float datum) {
+		void setFloat(const float datum) {
 			type = DataType::Float;
 
 			data.f = datum;
 		}
-		inline void setInt(const uint32_t datum) {
+		void setInt(const uint32_t datum) {
 			type = DataType::Integer;
 
 			data.i = datum;
 		}
-		inline void set(const unsigned char * bytes, DataType dataType) {
+		void set(const unsigned char * bytes, DataType dataType) {
 			type = dataType;
 
 			memcpy(data.b, bytes, 4);
 		}
-		inline void set(const unsigned char * bytes) {
+		void set(const unsigned char * bytes) {
 			memcpy(data.b, bytes, 4);
 
 			// detect which type it is
