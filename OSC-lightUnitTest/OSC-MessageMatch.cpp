@@ -65,6 +65,13 @@ struct LongStruct {
 	uint32_t int8;
 };
 
+struct DataType1_8bit {
+	uint8_t int1;
+	uint8_t int2;
+	uint8_t int3;
+	uint8_t int4;
+};
+
 struct MessageData {
 	uint32_t int0; uint32_t int1; uint32_t int2; uint32_t int3; uint32_t int4; uint32_t int5; uint32_t int6; uint32_t int7; uint32_t int8; uint32_t int9;
 	float float10; float float11; float float12; float float13; float float14; float float15; float float16; float float17; float float18; float float19;
@@ -97,10 +104,11 @@ namespace OSClightUnitTest
 		}
 
 		void loop() {
-
+			message.setValidData(true);
 		}
 
 		OSC::Message * generateMessage() {
+			message.setValidData(true);
 			return &message;
 		}
 
@@ -113,7 +121,7 @@ namespace OSClightUnitTest
 		}
 	};
 
-	class OSCDataConsumer : public OSC::StructMessageConsumer<DataTypes>
+	class OSCDataConsumer : public OSC::StructMessageConsumer<DataTypes, uint32_t>
 	{
 	public:
 		OSC::Message message;
@@ -126,11 +134,35 @@ namespace OSClightUnitTest
 		}
 
 		DataTypes calledbackEnum;
+		int callbackCallCount = 0;
 
 		void callbackEnum(DataTypes dataTypeEnum) {
 			calledbackEnum = dataTypeEnum;
+			callbackCallCount++;
 		}
 	};
+
+	class OSCDataConsumer_8bit : public OSC::StructMessageConsumer<DataTypes, uint8_t>
+	{
+	public:
+		OSC::Message message;
+
+		OSCDataConsumer_8bit(int mappingNumber) : StructMessageConsumer(mappingNumber) {
+		}
+
+		const char * pattern() {
+			return message.address;
+		}
+
+		DataTypes calledbackEnum;
+		int callbackCallCount = 0;
+
+		void callbackEnum(DataTypes dataTypeEnum) {
+			calledbackEnum = dataTypeEnum;
+			callbackCallCount++;
+		}
+	};
+
 
 	class OSCDataProducer : public OSC::MessageProducer
 	{
@@ -461,6 +493,32 @@ namespace OSClightUnitTest
 			Assert::AreEqual(bufferSizePre, bufferSizePost, L"Buffer message buffers not equal after 1000 loops", LINE_INFO());
 		}
 
+		TEST_METHOD(OSCLoopStream) {
+			auto OSC = OSC::Arduino(1, 1);
+			auto stream = Stream();
+
+			auto prodCons = OSCProducerConsumer();
+
+			OSC.bindStream(&stream);
+
+			OSC.addConsumer(&prodCons);
+			OSC.addProducer(&prodCons);
+
+			// complete a full write and a full read write and then store buffer sizes
+			OSC.loop(true);
+			OSC.loop(true);
+
+			int bufferSizePre = OSC.bufferMessage.bufferLength;
+
+			for (int i = 0; i < 1000; i++) {
+				OSC.loop(true);
+			}
+
+			int bufferSizePost = OSC.bufferMessage.bufferLength;
+
+			Assert::AreEqual(bufferSizePre, bufferSizePost, L"Buffer message buffers not equal after 1000 loops", LINE_INFO());
+		}
+
 		TEST_METHOD(OSCSerializationSpeed) {
 			auto message = OSC::Message();
 			auto print = Print();
@@ -672,6 +730,66 @@ namespace OSClightUnitTest
 
 		}
 
+		TEST_METHOD(OSCStagedStructs_8bit) {
+
+			auto type1 = DataType1_8bit();
+
+			auto structCons = OSCDataConsumer_8bit(4);
+
+			structCons.addEnumToStructMapping<DataType1_8bit>(DataTypes::DataType1, &type1);
+
+			auto message = OSC::Message();
+
+			for (int i = 1; i <= 4; ++i) {
+				message.empty();
+				message.reserveAtLeast(5);
+				message.addInt((i * 1) - 1);
+				message.addInt(i * 1);
+				message.addInt(i * 2);
+				message.addInt(i * 3);
+				message.addInt(i * 4);
+
+				structCons.callbackMessage(&message);
+
+				if (i == 1) {
+					Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType1, L"Wrong enum response", LINE_INFO());
+
+					Assert::AreEqual((uint8_t)1u, type1.int1, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreEqual((uint8_t)2u, type1.int2, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreEqual((uint8_t)3u, type1.int3, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreEqual((uint8_t)4u, type1.int4, L"Struct does not contain same value", LINE_INFO());
+				}
+
+				if (i == 2) {
+					Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType2, L"Wrong enum response", LINE_INFO());
+
+					Assert::AreNotEqual((uint8_t)2u, type1.int1, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual((uint8_t)4u, type1.int2, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual((uint8_t)6u, type1.int3, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual((uint8_t)8u, type1.int4, L"Struct does not contain same value", LINE_INFO());
+				}
+
+				if (i == 3) {
+					Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType3, L"Wrong enum response", LINE_INFO());
+
+					Assert::AreNotEqual((uint8_t)3u, type1.int1, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual((uint8_t)6u, type1.int2, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual((uint8_t)9u, type1.int3, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual((uint8_t)12u, type1.int4, L"Struct does not contain same value", LINE_INFO());
+				}
+
+				if (i == 4) {
+					Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType4, L"Wrong enum response", LINE_INFO());
+
+					Assert::AreNotEqual((uint8_t)4u, type1.int1, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual((uint8_t)8u, type1.int2, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual((uint8_t)12u, type1.int3, L"Struct does not contain same value", LINE_INFO());
+					Assert::AreNotEqual((uint8_t)16u, type1.int4, L"Struct does not contain same value", LINE_INFO());
+				}
+			}
+
+		}
+
 		TEST_METHOD(OSCStagedStructsNoReservation) {
 
 			auto type1 = DataType1();
@@ -820,6 +938,35 @@ namespace OSClightUnitTest
 			structCons.callbackMessage(&message);
 
 			Assert::IsTrue(structCons.calledbackEnum == DataTypes::ShortStruct, L"Wrong enum response", LINE_INFO());
+			Assert::AreEqual(1u, shortStruct.int1, L"Struct does not contain same value", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCCorrectStagedShortStructs) {
+
+			auto shortStruct = ShortStruct();
+
+			shortStruct.int1 = 255;
+
+			auto structCons = OSCDataConsumer(10);
+
+			structCons.addEnumToStructMapping<ShortStruct>(DataTypes::DataType1, &shortStruct);
+			structCons.addEnumToStructMapping<ShortStruct>(DataTypes::ShortStruct, &shortStruct);
+			structCons.addEnumToStructMapping<ShortStruct>(DataTypes::DataType2, &shortStruct);
+			structCons.addEnumToStructMapping<ShortStruct>(DataTypes::DataType4, &shortStruct);
+
+			auto message = OSC::Message();
+			message.empty();
+			message.reserveAtLeast(5);
+			message.addInt(4);
+			message.addInt(1);
+			message.addInt(2);
+			message.addInt(3);
+			message.addInt(4);
+
+			structCons.callbackMessage(&message);
+
+			Assert::IsTrue(structCons.calledbackEnum == DataTypes::ShortStruct, L"Wrong enum response", LINE_INFO());
+			Assert::IsTrue(structCons.callbackCallCount == 1, L"Too many callbacks", LINE_INFO());
 			Assert::AreEqual(1u, shortStruct.int1, L"Struct does not contain same value", LINE_INFO());
 		}
 

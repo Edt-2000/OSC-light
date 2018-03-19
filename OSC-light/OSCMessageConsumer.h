@@ -10,7 +10,7 @@ namespace OSC {
 		virtual void callbackMessage(Message *) = 0;
 	};
 
-	template <typename Enum>
+	template <typename Enum, class intSize>
 	class StructMessageConsumer : public MessageConsumer
 	{
 	private:
@@ -49,9 +49,6 @@ namespace OSC {
 		}
 
 	public:
-		StructMessageConsumer() {
-		}
-
 		StructMessageConsumer(int mappingNumber) {
 			reserveMappings(mappingNumber);
 		}
@@ -82,22 +79,24 @@ namespace OSC {
 			uint32_t intValue;
 			float floatValue;
 
-			for (int i = 0; i < structSize; i += 4) {
-				switch (message->getDataType(d)) {
+			int i = 0;
 
-				case DataType::Integer:
-					intValue = message->getInt(d);
-					memcpy(dataStruct + i, &intValue, 4);
-					break;
+			while(i < structSize) {
+				switch (message->getDataType(d)) {
 
 				case DataType::Float:
 					floatValue = message->getFloat(d);
 					memcpy(dataStruct + i, &floatValue, 4);
+
+					i += 4;
 					break;
 
+				case DataType::Integer:
 				default:
-					intValue = 0;
-					memcpy(dataStruct + i, &intValue, 4);
+					intValue = message->getInt(d);
+					memcpy(dataStruct + i, &intValue, sizeof(intSize));
+
+					i += sizeof(intSize);
 					break;
 				}
 

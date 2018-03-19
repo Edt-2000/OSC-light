@@ -1,13 +1,13 @@
 #pragma once
 
 // OSC light implementation for Arduino
-
 #include "OSCMessage.h"
 #include "OSCMessageConsumer.h"
 #include "OSCMessageProducer.h"
 
 #ifdef _MSC_VER
 #include "../OSC-lightUnitTest/Udp.h"
+#include "../OSC-lightUnitTest/Stream.h"
 typedef unsigned int uint32_t;
 #else
 #include <Udp.h>
@@ -16,6 +16,21 @@ typedef unsigned int uint32_t;
 namespace OSC {
 	class Arduino
 	{
+	private:
+		UDP * _udpHandle;
+		Stream * _serialHandle;
+
+		MessageProducer ** _oscProducers;
+		MessageConsumer ** _oscConsumers;
+
+		IPAddress _remoteIP;
+		int _remotePort;
+
+		int _producers = 0;
+		int _consumers = 0;
+
+		bool _useSerial = false;
+
 	public:
 		Arduino() {}
 		Arduino(int consumers, int producers) {
@@ -30,10 +45,9 @@ namespace OSC {
 			_remotePort = remotePort;
 		}
 
-		// limits the message consumption to a single IP
-		void consumeExclusivelyFrom(IPAddress remoteIP) {
-			_exclusiveIP = remoteIP;
-			_hasExclusiveIP = true;
+		void bindStream(Stream * serial) {
+			_serialHandle = serial;
+			_useSerial = true;
 		}
 
 		// adds an OSC message consumer
@@ -53,72 +67,86 @@ namespace OSC {
 
 			i = 0;
 
-			// first, loop all producer's loop methods, then get all the messages out
-			while (i < _producers) {
+			if(!_useSerial) {
+				// first, loop all producer's loop methods, then get all the messages out
+				while (i < _producers) {
 
-				_oscProducers[i]->loop();
+					_oscProducers[i]->loop();
 
-				if (send) {
-					Message * message = _oscProducers[i]->generateMessage();
+					if (send) {
+						Message * message = _oscProducers[i]->generateMessage();
 
-					if (message->isSendableMessage()) {
-						_udpHandle->beginPacket(_remoteIP, _remotePort);
-						message->send(_udpHandle);
-						_udpHandle->endPacket();
-					}
-
-					message->setValidData(false);
-				}
-				++i;
-			}
-
-			// then process all the messages in
-			if (_consumers > 0) {
-				if ((size = _udpHandle->parsePacket()) > 0) {
-
-					// ignore messages which are not from a specific IP
-					if (_hasExclusiveIP && _exclusiveIP != _udpHandle->remoteIP()) {
-						return;
-					}
-
-					// make sure buffer is big enough
-					bufferMessage.reserveBuffer(size);
-
-					// write udp data to buffer
-					_udpHandle->read(bufferMessage.processBuffer, size);
-
-					// reuse the same message everytime to save repetitive memory allocations
-					bufferMessage.process();
-
-					i = 0;
-					do {
-						if (bufferMessage.isValidRoute(_oscConsumers[i]->pattern())) {
-							_oscConsumers[i]->callbackMessage(&bufferMessage);
+						if (message->isSendableMessage()) {
+							_udpHandle->beginPacket(_remoteIP, _remotePort);
+							message->send(_udpHandle);
+							_udpHandle->endPacket();
 						}
-					} while (++i < _consumers);
+					}
+					++i;
+				}
 
-					_udpHandle->flush();
+				// then process all the messages in
+				if (_consumers > 0) {
+					if ((size = _udpHandle->parsePacket()) > 0) {
+
+						// make sure buffer is big enough
+						bufferMessage.reserveBuffer(size);
+
+						// write udp data to buffer
+						_udpHandle->read(bufferMessage.processBuffer, size);
+
+						// reuse the same message everytime to save repetitive memory allocations
+						bufferMessage.process();
+
+						i = 0;
+						do {
+							if (bufferMessage.isValidRoute(_oscConsumers[i]->pattern())) {
+								_oscConsumers[i]->callbackMessage(&bufferMessage);
+							}
+						} while (++i < _consumers);
+					}
 				}
 			}
 			else {
-				_udpHandle->flush();
+				// first, loop all producer's loop methods, then get all the messages out
+				while (i < _producers) {
+
+					_oscProducers[i]->loop();
+
+					if (send) {
+						Message * message = _oscProducers[i]->generateMessage();
+
+						if (message->isSendableMessage()) {
+							message->send(_serialHandle);
+						}
+					}
+					++i;
+				}
+
+				// then process all the messages in
+				if (_consumers > 0) {
+					if ((size = _serialHandle->available()) > 0) {
+
+						// make sure buffer is big enough
+						bufferMessage.reserveBuffer(size);
+
+						// write udp data to buffer
+						_serialHandle->readBytes(bufferMessage.processBuffer, size);
+
+						// reuse the same message everytime to save repetitive memory allocations
+						bufferMessage.process();
+
+						i = 0;
+						do {
+							if (bufferMessage.isValidRoute(_oscConsumers[i]->pattern())) {
+								_oscConsumers[i]->callbackMessage(&bufferMessage);
+							}
+						} while (++i < _consumers);
+					}
+				}
 			}
 		}
 
 		Message bufferMessage = Message();
-
-	private:
-		UDP * _udpHandle;
-		IPAddress _exclusiveIP;
-		bool _hasExclusiveIP = false;
-
-		MessageProducer ** _oscProducers;
-		MessageConsumer ** _oscConsumers;
-
-		IPAddress _remoteIP;
-		int _remotePort;
-
-		int _producers = 0;
-		int _consumers = 0;
 	};
 }
