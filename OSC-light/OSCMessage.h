@@ -1,6 +1,5 @@
 #pragma once
 
-// TODO: do not include the things required for testing here
 #ifdef _MSC_VER
 #include "../OSC-lightUnitTest/Print.h"
 #else
