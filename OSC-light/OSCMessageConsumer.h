@@ -7,7 +7,7 @@ namespace OSC {
 	{
 	public:
 		virtual const char * pattern() = 0;
-		virtual void callbackMessage(Message *) = 0;
+		virtual void callbackMessage(IMessage *) = 0;
 	};
 
 	template <typename Enum, class intSize>
@@ -62,8 +62,9 @@ namespace OSC {
 
 		virtual void callbackEnum(Enum messageType) = 0;
 
-		void callbackMessage(Message * message) {
-			int value = message->getInt(0);
+		void callbackMessage(IMessage * message) {
+			// TODO: remove this cast
+			int value = ((Message*)message)->getInt(0);
 			if (value < _structsReserved) {
 				
 				readToStruct(message, _stagedStructs[value], _stagedStructSizes[value], 1);
@@ -73,7 +74,7 @@ namespace OSC {
 		}
 
 		// Writes the values in data to the given struct type and return it
-		void readToStruct(Message * message, unsigned char * dataStruct, int structSize, int offset = 0) {
+		void readToStruct(IMessage * message, unsigned char * dataStruct, int structSize, int offset = 0) {
 			int d = offset;
 
 			uint32_t intValue;
@@ -82,10 +83,10 @@ namespace OSC {
 			int i = 0;
 
 			while(i < structSize) {
-				switch (message->getDataType(d)) {
+				switch (((Message*)message)->getDataType(d)) {
 
 				case DataType::Float:
-					floatValue = message->getFloat(d);
+					floatValue = ((Message*)message)->getFloat(d);
 					memcpy(dataStruct + i, &floatValue, 4);
 
 					i += 4;
@@ -93,7 +94,7 @@ namespace OSC {
 
 				case DataType::Integer:
 				default:
-					intValue = message->getInt(d);
+					intValue = ((Message*)message)->getInt(d);
 					memcpy(dataStruct + i, &intValue, sizeof(intSize));
 
 					i += sizeof(intSize);

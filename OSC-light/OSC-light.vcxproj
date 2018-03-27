@@ -14,15 +14,14 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="IMessage.h" />
     <ClInclude Include="OSCArduino.h" />
     <ClInclude Include="OSCMatch.h" />
     <ClInclude Include="OSCMessage.h" />
     <ClInclude Include="OSCData.h" />
     <ClInclude Include="OSCMessageConsumer.h" />
     <ClInclude Include="OSCMessageProducer.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="OSCMessage.cpp" />
+    <ClInclude Include="OSCStructMessage.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{381D80D3-5438-4EA7-875E-B21B6D91F65E}</ProjectGuid>

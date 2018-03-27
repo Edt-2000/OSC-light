@@ -29,10 +29,11 @@
     <ClInclude Include="OSCMessageProducer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="OSCMessage.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
+    <ClInclude Include="OSCStructMessage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="IMessage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

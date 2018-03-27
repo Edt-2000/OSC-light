@@ -7,6 +7,6 @@ namespace OSC {
 	{
 	public:
 		virtual void loop() = 0;
-		virtual Message * generateMessage() = 0;
+		virtual IMessage * generateMessage() = 0;
 	};
 }

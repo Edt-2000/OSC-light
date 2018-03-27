@@ -4,6 +4,7 @@
 #include "Print.h"
 
 #include "..\OSC-light\OSCMessage.h"
+#include "..\OSC-light\OSCStructMessage.h"
 #include "..\OSC-light\OSCMatch.h"
 
 #include "..\OSC-light\OSCArduino.h"
@@ -107,7 +108,7 @@ namespace OSClightUnitTest
 			message.setValidData(true);
 		}
 
-		OSC::Message * generateMessage() {
+		OSC::IMessage * generateMessage() {
 			message.setValidData(true);
 			return &message;
 		}
@@ -116,7 +117,7 @@ namespace OSClightUnitTest
 			return message.address;
 		}
 
-		void callbackMessage(OSC::Message * msg) {
+		void callbackMessage(OSC::IMessage * msg) {
 
 		}
 	};
@@ -163,7 +164,6 @@ namespace OSClightUnitTest
 		}
 	};
 
-
 	class OSCDataProducer : public OSC::MessageProducer
 	{
 	public:
@@ -176,7 +176,7 @@ namespace OSClightUnitTest
 
 		}
 
-		OSC::Message * generateMessage() {
+		OSC::IMessage * generateMessage() {
 
 
 			return &message;
@@ -259,6 +259,7 @@ namespace OSClightUnitTest
 			Assert::IsFalse(message.isValidRoute("/New/Address"));
 		}
 
+		// MESSAGE
 		TEST_METHOD(OSCMessageContentTest) {
 			auto newMessage = OSC::Message();
 			auto message = OSC::Message();
@@ -421,7 +422,7 @@ namespace OSClightUnitTest
 				L"Serialized data not conform spec", LINE_INFO());
 		}
 
-		TEST_METHOD(OSDeserializationBigEndian) {
+		TEST_METHOD(OSCDeserializationBigEndian) {
 			auto message = OSC::Message();
 			auto print = Print();
 
@@ -444,7 +445,7 @@ namespace OSClightUnitTest
 			Assert::AreEqual(5u, message.getInt(4), L"Integers not equal", LINE_INFO());
 		}
 
-		TEST_METHOD(OSDeserializationLittleEndian) {
+		TEST_METHOD(OSCDeserializationLittleEndian) {
 			auto message = OSC::Message();
 			auto print = Print();
 
@@ -468,7 +469,7 @@ namespace OSClightUnitTest
 		}
 
 		TEST_METHOD(OSCLoop) {
-			auto OSC = OSC::Arduino(1, 1);
+			auto OSC = OSC::Arduino<OSC::Message>(1, 1);
 			auto Udp = UDP();
 
 			auto prodCons = OSCProducerConsumer();
@@ -482,19 +483,19 @@ namespace OSClightUnitTest
 			OSC.loop(true);
 			OSC.loop(true);
 
-			int bufferSizePre = OSC.bufferMessage.bufferLength;
+			int bufferSizePre = OSC._bufferMessage->bufferLength;
 
 			for (int i = 0; i < 1000; i++) {
 				OSC.loop(true);
 			}
 
-			int bufferSizePost = OSC.bufferMessage.bufferLength;
+			int bufferSizePost = OSC._bufferMessage->bufferLength;
 
 			Assert::AreEqual(bufferSizePre, bufferSizePost, L"Buffer message buffers not equal after 1000 loops", LINE_INFO());
 		}
 
 		TEST_METHOD(OSCLoopStream) {
-			auto OSC = OSC::Arduino(1, 1);
+			auto OSC = OSC::Arduino<OSC::Message>(1, 1);
 			auto stream = Stream();
 
 			auto prodCons = OSCProducerConsumer();
@@ -508,56 +509,432 @@ namespace OSClightUnitTest
 			OSC.loop(true);
 			OSC.loop(true);
 
-			int bufferSizePre = OSC.bufferMessage.bufferLength;
+			int bufferSizePre = OSC._bufferMessage->bufferLength;
 
 			for (int i = 0; i < 1000; i++) {
 				OSC.loop(true);
 			}
 
-			int bufferSizePost = OSC.bufferMessage.bufferLength;
+			int bufferSizePost = OSC._bufferMessage->bufferLength;
 
 			Assert::AreEqual(bufferSizePre, bufferSizePost, L"Buffer message buffers not equal after 1000 loops", LINE_INFO());
 		}
 
-		TEST_METHOD(OSCSerializationSpeed) {
-			auto message = OSC::Message();
+		// MESSAGE STRUCT
+		TEST_METHOD(OSCStructMessageContentTest) {
+			auto newMessage = OSC::StructMessage<Data, uint32_t>();
+			auto message = OSC::StructMessage<Data, uint32_t>();
 			auto print = Print();
 
-			auto start = std::chrono::system_clock::now();
-
 			message.setAddress("/M");
-			message.empty();
-			message.reserveAtLeast(16);
-			message.addInt(127);
-			message.addFloat(2.3f);
-			message.addFloat(3.4f);
-			message.addFloat(4.5f);
-			message.addFloat(5.6f);
-			message.addInt(4301);
-			message.addInt(-1);
-			message.addFloat(123.123f);
-			message.addFloat(1234.1234f);
-			message.addFloat(12345.12345f);
-			message.addFloat(123456.123456f);
-			message.addInt(-2);
-			message.addInt(32767);
-			message.addFloat(-2.1f);
-			message.addFloat(-2.0001f);
-			message.addFloat(-10.0001f);
+			message.messageStruct.int1 = 12;
+			message.messageStruct.int2 = 123;
+			message.messageStruct.int3 = 1234;
+			message.messageStruct.int4 = 12345;
+			message.messageStruct.int5 = 123456;
+
+			message.send(&print);
+
+			newMessage.reserveBuffer(print.bufferSize);
+			newMessage.processBuffer = print.buffer;
+			newMessage.process();
+
+			Assert::IsTrue(message.messageStruct.int1 == newMessage.messageStruct.int1, L"Int 1 not the same", LINE_INFO());
+			Assert::IsTrue(message.messageStruct.int2 == newMessage.messageStruct.int2, L"Int 2 not the same", LINE_INFO());
+			Assert::IsTrue(message.messageStruct.int3 == newMessage.messageStruct.int3, L"Int 3 not the same", LINE_INFO());
+			Assert::IsTrue(message.messageStruct.int4 == newMessage.messageStruct.int4, L"Int 4 not the same", LINE_INFO());
+			Assert::IsTrue(message.messageStruct.int5 == newMessage.messageStruct.int5, L"Int 5 not the same", LINE_INFO());
+
+			Assert::IsTrue(strcmp(message.address, newMessage.address) == 0);
+
+			int bufferLength = newMessage.bufferLength;
 
 			for (int i = 0; i < 1000; i++) {
-				message.send(&print);
+
+				newMessage.reserveBuffer(print.bufferSize);
+				newMessage.processBuffer = print.buffer;
+				newMessage.process();
+
 			}
 
-			auto end = std::chrono::system_clock::now();
-
-			std::chrono::duration<double> diff = end - start;
-
-			auto value = diff.count();
-
-			Assert::IsTrue(value < 1.0, L"Speed", LINE_INFO());
+			Assert::IsTrue(bufferLength == newMessage.bufferLength);
 		}
 
+		TEST_METHOD(OSCStructSerializationBigEndian) {
+			auto message = OSC::StructMessage<Data, uint32_t>();
+			auto print = Print();
+
+			message.setAddress("/Some/Address");
+
+			message.messageStruct.int1 = 1;
+			message.messageStruct.int2 = 2;
+			message.messageStruct.int3 = 3;
+			message.messageStruct.int4 = 4;
+			message.messageStruct.int5 = 5;
+
+			message.send(&print, false);
+
+			std::string stringFromSerialization(print.fullBuffer);
+
+			Assert::AreEqual(
+				"/Some/Address___,iiiii_____\x1___\x2___\x3___\x4___\x5",
+				stringFromSerialization.c_str(),
+				L"Serialized data not conform spec", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCStructSerializationLittleEndian) {
+			auto message = OSC::StructMessage<Data, uint32_t>();
+			auto print = Print();
+
+			message.setAddress("/Some/Address");
+			
+			message.messageStruct.int1 = 1;
+			message.messageStruct.int2 = 2;
+			message.messageStruct.int3 = 3;
+			message.messageStruct.int4 = 4;
+			message.messageStruct.int5 = 5;
+
+			message.send(&print, true);
+
+			std::string stringFromSerialization(print.fullBuffer);
+
+			Assert::AreEqual(
+				"/Some/Address___,iiiii__\x1___\x2___\x3___\x4___\x5___",
+				stringFromSerialization.c_str(),
+				L"Serialized data not conform spec", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCStructDeserializationBigEndian) {
+			auto message = OSC::StructMessage<Data, uint32_t>();
+			auto print = Print();
+
+			std::string testString = "/Some/Address___,iiiii_____\x1___\x2___\x3___\x4___\x5";
+			int length = testString.length();
+
+			print.write(testString.c_str(), length);
+
+			message.setAddress("/Some/Address");
+			message.reserveBuffer(length);
+			memcpy(message.processBuffer, print.reversedBuffer, length);
+
+			message.process(false);
+
+			Assert::AreEqual(1u, message.messageStruct.int1, L"Integers not equal", LINE_INFO());
+			Assert::AreEqual(2u, message.messageStruct.int2, L"Integers not equal", LINE_INFO());
+			Assert::AreEqual(3u, message.messageStruct.int3, L"Integers not equal", LINE_INFO());
+			Assert::AreEqual(4u, message.messageStruct.int4, L"Integers not equal", LINE_INFO());
+			Assert::AreEqual(5u, message.messageStruct.int5, L"Integers not equal", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCStructDeserializationLittleEndian) {
+			auto message = OSC::StructMessage<Data, uint32_t>();
+			auto print = Print();
+
+			std::string testString = "/Some/Address___,iiiii__\x1___\x2___\x3___\x4___\x5___";
+			int length = testString.length();
+
+			print.write(testString.c_str(), length);
+
+			message.setAddress("/Some/Address");
+			message.reserveBuffer(length);
+			memcpy(message.processBuffer, print.reversedBuffer, length);
+
+			message.process(true);
+
+			Assert::AreEqual(1u, message.messageStruct.int1, L"Integers not equal", LINE_INFO());
+			Assert::AreEqual(2u, message.messageStruct.int2, L"Integers not equal", LINE_INFO());
+			Assert::AreEqual(3u, message.messageStruct.int3, L"Integers not equal", LINE_INFO());
+			Assert::AreEqual(4u, message.messageStruct.int4, L"Integers not equal", LINE_INFO());
+			Assert::AreEqual(5u, message.messageStruct.int5, L"Integers not equal", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCStruct8bitMessageContentTest) {
+			auto newMessage = OSC::StructMessage<DataType1_8bit, uint8_t>();
+			auto message = OSC::StructMessage<DataType1_8bit, uint8_t>();
+			auto print = Print();
+
+			message.setAddress("/M");
+			message.messageStruct.int1 = 12;
+			message.messageStruct.int2 = 123;
+			message.messageStruct.int3 = 255;
+			message.messageStruct.int4 = 128;
+
+			message.send(&print);
+
+			newMessage.reserveBuffer(print.bufferSize);
+			newMessage.processBuffer = print.buffer;
+			newMessage.process();
+
+			Assert::IsTrue(message.messageStruct.int1 == newMessage.messageStruct.int1, L"Int 1 not the same", LINE_INFO());
+			Assert::IsTrue(message.messageStruct.int2 == newMessage.messageStruct.int2, L"Int 2 not the same", LINE_INFO());
+			Assert::IsTrue(message.messageStruct.int3 == newMessage.messageStruct.int3, L"Int 3 not the same", LINE_INFO());
+			Assert::IsTrue(message.messageStruct.int4 == newMessage.messageStruct.int4, L"Int 4 not the same", LINE_INFO());
+			
+			Assert::IsTrue(strcmp(message.address, newMessage.address) == 0);
+
+			int bufferLength = newMessage.bufferLength;
+
+			for (int i = 0; i < 1000; i++) {
+
+				newMessage.reserveBuffer(print.bufferSize);
+				newMessage.processBuffer = print.buffer;
+				newMessage.process();
+
+			}
+
+			Assert::IsTrue(bufferLength == newMessage.bufferLength);
+		}
+
+		TEST_METHOD(OSCStruct8bitSerializationBigEndian) {
+			auto message = OSC::StructMessage<DataType1_8bit, uint8_t>();
+			auto print = Print();
+
+			message.setAddress("/Some/Address");
+
+			message.messageStruct.int1 = 1;
+			message.messageStruct.int2 = 2;
+			message.messageStruct.int3 = 3;
+			message.messageStruct.int4 = 4;
+
+			message.send(&print, false);
+
+			std::string stringFromSerialization(print.fullBuffer);
+
+			Assert::AreEqual(
+				"/Some/Address___,iiii______\x1___\x2___\x3___\x4",
+				stringFromSerialization.c_str(),
+				L"Serialized data not conform spec", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCStruct8bitSerializationLittleEndian) {
+			auto message = OSC::StructMessage<DataType1_8bit, uint8_t>();
+			auto print = Print();
+
+			message.setAddress("/Some/Address");
+
+			message.messageStruct.int1 = 1;
+			message.messageStruct.int2 = 2;
+			message.messageStruct.int3 = 3;
+			message.messageStruct.int4 = 4;
+
+			message.send(&print, true);
+
+			std::string stringFromSerialization(print.fullBuffer);
+
+			Assert::AreEqual(
+				"/Some/Address___,iiii___\x1___\x2___\x3___\x4___",
+				stringFromSerialization.c_str(),
+				L"Serialized data not conform spec", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCStruct8bitDeserializationBigEndian) {
+			auto message = OSC::StructMessage<DataType1_8bit, uint8_t>();
+			auto print = Print();
+
+			std::string testString = "/Some/Address___,iiiii_____\x1___\x2___\x3___\x4___\x5";
+			int length = testString.length();
+
+			print.write(testString.c_str(), length);
+
+			message.setAddress("/Some/Address");
+			message.reserveBuffer(length);
+			memcpy(message.processBuffer, print.reversedBuffer, length);
+
+			message.process(false);
+
+			Assert::AreEqual((uint8_t)1u, message.messageStruct.int1, L"Integers not equal", LINE_INFO());
+			Assert::AreEqual((uint8_t)2u, message.messageStruct.int2, L"Integers not equal", LINE_INFO());
+			Assert::AreEqual((uint8_t)3u, message.messageStruct.int3, L"Integers not equal", LINE_INFO());
+			Assert::AreEqual((uint8_t)4u, message.messageStruct.int4, L"Integers not equal", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCStruct8bitDeserializationLittleEndian) {
+			auto message = OSC::StructMessage<DataType1_8bit, uint8_t>();
+			auto print = Print();
+
+			std::string testString = "/Some/Address___,iiiii__\x1___\x2___\x3___\x4___\x5___";
+			int length = testString.length();
+
+			print.write(testString.c_str(), length);
+
+			message.setAddress("/Some/Address");
+			message.reserveBuffer(length);
+			memcpy(message.processBuffer, print.reversedBuffer, length);
+
+			message.process(true);
+
+			Assert::AreEqual((uint8_t)1u, message.messageStruct.int1, L"Integers not equal", LINE_INFO());
+			Assert::AreEqual((uint8_t)2u, message.messageStruct.int2, L"Integers not equal", LINE_INFO());
+			Assert::AreEqual((uint8_t)3u, message.messageStruct.int3, L"Integers not equal", LINE_INFO());
+			Assert::AreEqual((uint8_t)4u, message.messageStruct.int4, L"Integers not equal", LINE_INFO());
+		}
+
+		// TODO: loop
+
+		TEST_METHOD(OSCStructLoop) {
+			auto OSC = OSC::Arduino<OSC::StructMessage<Data, uint32_t>>(1, 1);
+			auto Udp = UDP();
+
+			auto prodCons = OSCProducerConsumer();
+
+			OSC.bindUDP(&Udp, 1, 1);
+
+			OSC.addConsumer(&prodCons);
+			OSC.addProducer(&prodCons);
+
+			// complete a full write and a full read write and then store buffer sizes
+			OSC.loop(true);
+			OSC.loop(true);
+
+			int bufferSizePre = OSC._bufferMessage->bufferLength;
+
+			for (int i = 0; i < 1000; i++) {
+				OSC.loop(true);
+			}
+
+			int bufferSizePost = OSC._bufferMessage->bufferLength;
+
+			Assert::AreEqual(bufferSizePre, bufferSizePost, L"Buffer message buffers not equal after 1000 loops", LINE_INFO());
+		}
+
+
+		TEST_METHOD(OSCStructLoopStream) {
+			auto OSC = OSC::Arduino<OSC::StructMessage<Data, uint32_t>>(1, 1);
+			auto stream = Stream();
+
+			auto prodCons = OSCProducerConsumer();
+
+			OSC.bindStream(&stream);
+
+			OSC.addConsumer(&prodCons);
+			OSC.addProducer(&prodCons);
+
+			// complete a full write and a full read write and then store buffer sizes
+			OSC.loop(true);
+			OSC.loop(true);
+
+			int bufferSizePre = OSC._bufferMessage->bufferLength;
+
+			for (int i = 0; i < 1000; i++) {
+				OSC.loop(true);
+			}
+
+			int bufferSizePost = OSC._bufferMessage->bufferLength;
+
+			Assert::AreEqual(bufferSizePre, bufferSizePost, L"Buffer message buffers not equal after 1000 loops", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCStruct8bitLoop) {
+			auto OSC = OSC::Arduino<OSC::StructMessage<DataType1_8bit, uint8_t>>(1, 1);
+			auto Udp = UDP();
+
+			auto prodCons = OSCProducerConsumer();
+
+			OSC.bindUDP(&Udp, 1, 1);
+
+			OSC.addConsumer(&prodCons);
+			OSC.addProducer(&prodCons);
+
+			// complete a full write and a full read write and then store buffer sizes
+			OSC.loop(true);
+			OSC.loop(true);
+
+			int bufferSizePre = OSC._bufferMessage->bufferLength;
+
+			for (int i = 0; i < 1000; i++) {
+				OSC.loop(true);
+			}
+
+			int bufferSizePost = OSC._bufferMessage->bufferLength;
+
+			Assert::AreEqual(bufferSizePre, bufferSizePost, L"Buffer message buffers not equal after 1000 loops", LINE_INFO());
+		}
+
+
+		TEST_METHOD(OSCStruct8bitLoopStream) {
+			auto OSC = OSC::Arduino<OSC::StructMessage<DataType1_8bit, uint8_t>>(1, 1);
+			auto stream = Stream();
+
+			auto prodCons = OSCProducerConsumer();
+
+			OSC.bindStream(&stream);
+
+			OSC.addConsumer(&prodCons);
+			OSC.addProducer(&prodCons);
+
+			// complete a full write and a full read write and then store buffer sizes
+			OSC.loop(true);
+			OSC.loop(true);
+
+			int bufferSizePre = OSC._bufferMessage->bufferLength;
+
+			for (int i = 0; i < 1000; i++) {
+				OSC.loop(true);
+			}
+
+			int bufferSizePost = OSC._bufferMessage->bufferLength;
+
+			Assert::AreEqual(bufferSizePre, bufferSizePost, L"Buffer message buffers not equal after 1000 loops", LINE_INFO());
+		}
+
+		// COMPARE MESSAGES
+
+		TEST_METHOD(OSCSerializationSpeed) {
+			auto messageRegular = OSC::Message();
+			auto print = Print();
+
+			int n = 1000000;
+
+			auto startRegular = std::chrono::system_clock::now();
+
+			messageRegular.setAddress("/M");
+			messageRegular.empty();
+			messageRegular.reserveAtLeast(5);
+			messageRegular.addInt(12);
+			messageRegular.addInt(123);
+			messageRegular.addInt(1234);
+			messageRegular.addInt(12345);
+			messageRegular.addInt(123456);
+
+			for (int i = 0; i < n; i++) {
+				messageRegular.send(&print);
+				messageRegular.processBuffer = print.buffer;
+				messageRegular.process();
+			}
+
+			auto endRegular = std::chrono::system_clock::now();
+
+			std::chrono::duration<double> diffRegular = endRegular - startRegular;
+
+			auto valueRegular = diffRegular.count();
+
+			auto messageStruct = OSC::StructMessage<Data, uint32_t>();
+			
+			auto startStruct = std::chrono::system_clock::now();
+
+			messageStruct.setAddress("/M");
+			messageStruct.messageStruct.int1 = 12;
+			messageStruct.messageStruct.int2 = 123;
+			messageStruct.messageStruct.int3 = 1234;
+			messageStruct.messageStruct.int4 = 12345;
+			messageStruct.messageStruct.int5 = 123456;
+			
+			for (int i = 0; i < n; i++) {
+				messageStruct.send(&print);
+				messageStruct.processBuffer = print.buffer;
+				messageStruct.process();
+			}
+
+			auto endStruct = std::chrono::system_clock::now();
+
+			std::chrono::duration<double> diffStruct = endStruct - startStruct;
+
+			auto valueStruct = diffStruct.count();
+
+			Assert::IsTrue(valueStruct < valueRegular, L"Better method faster", LINE_INFO());
+		}
+
+		// STRUCT Message Consumer
 		TEST_METHOD(OSCReadAsStruct) {
 			auto message = OSC::Message();
 

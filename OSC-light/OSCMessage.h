@@ -8,36 +8,12 @@
 
 #include "OSCData.h"
 #include "OSCMatch.h"
+#include "IMessage.h"
 
 namespace OSC {
-
-	// static helpers
-	static Match _matchHelper = Match();
-
-	class Message
+	class Message : public IMessage
 	{
-	private:
-		bool _validData = true;
-		static int _padSize(int bytes) { return (4 - (bytes & 03)) & 3; }
-		static bool _isBigEndian() {
-			const int one = 1;
-			const char sig = *(char*)&one;
-
-			return (sig == 0);
-		}
-
 	public:
-		// Length of the process buffer
-		int bufferLength = 0;
-
-		// Process buffer for writing raw UDP data
-		char * processBuffer;
-
-		// Sub process buffer for writing chucks of buffered raw UDP data
-		char * subBuffer;
-
-		// Char array containing the address 
-		char * address;
 
 		// Number of data elements in data array
 		int dataCount = 0;
@@ -64,16 +40,6 @@ namespace OSC {
 				delete[] processBuffer;
 				delete[] subBuffer;
 			}
-		}
-
-		// Sets the address of the message.
-		void setAddress(const char * newAddress) {
-			if (address != nullptr) {
-				delete[] address;
-			}
-
-			address = new char[strlen(newAddress) + 1];
-			strcpy(address, newAddress);
 		}
 
 		// Reserves the specified amount of OSCData elements to avoid multiple reallocations of the buffer.
@@ -188,22 +154,6 @@ namespace OSC {
 					++d;
 				}
 			}
-		}
-
-		// Evaluates wheter the given pattern is a valid route for the message.
-		bool isValidRoute(const char * pattern) {
-			// the address is of the message is the pattern to match
-			return _matchHelper.isMatch(pattern, address);
-		}
-
-		// Boolean to evaluate whether the message should be send.
-		bool isSendableMessage() {
-			return _validData;
-		}
-
-		// Sets whether the data of the message is valid
-		void setValidData(bool valid) {
-			_validData = valid;
 		}
 
 		// Sends the data using the given Print object.
@@ -326,21 +276,6 @@ namespace OSC {
 			}
 			
 			dataCount = newDataCount;
-		}
-
-		// Reserves the amount of data for use in the process() / send() method.
-		void reserveBuffer(int dataLength) {
-			if (dataLength > bufferLength) {
-				if (bufferLength > 0) {
-					delete[] processBuffer;
-					delete[] subBuffer;
-				}
-
-				bufferLength = dataLength + 4;
-
-				processBuffer = new char[bufferLength];
-				subBuffer = new char[bufferLength];
-			}
 		}
 	};
 };

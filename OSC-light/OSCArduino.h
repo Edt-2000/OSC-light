@@ -14,6 +14,8 @@ typedef unsigned int uint32_t;
 #endif
 
 namespace OSC {
+
+	template <class MessageType>
 	class Arduino
 	{
 	private:
@@ -31,11 +33,16 @@ namespace OSC {
 
 		bool _useSerial = false;
 
+
 	public:
+
 		Arduino() {}
+
 		Arduino(int consumers, int producers) {
 			_oscConsumers = new MessageConsumer*[consumers];
 			_oscProducers = new MessageProducer*[producers];
+
+			_bufferMessage = new MessageType();
 		}
 
 		// binds UDP handle to receive and send OSC messages 
@@ -74,7 +81,7 @@ namespace OSC {
 					_oscProducers[i]->loop();
 
 					if (send) {
-						Message * message = _oscProducers[i]->generateMessage();
+						IMessage * message = _oscProducers[i]->generateMessage();
 
 						if (message->isSendableMessage()) {
 							_udpHandle->beginPacket(_remoteIP, _remotePort);
@@ -90,18 +97,18 @@ namespace OSC {
 					if ((size = _udpHandle->parsePacket()) > 0) {
 
 						// make sure buffer is big enough
-						bufferMessage.reserveBuffer(size);
+						_bufferMessage->reserveBuffer(size);
 
 						// write udp data to buffer
-						_udpHandle->read(bufferMessage.processBuffer, size);
+						_udpHandle->read(_bufferMessage->processBuffer, size);
 
 						// reuse the same message everytime to save repetitive memory allocations
-						bufferMessage.process();
+						_bufferMessage->process();
 
 						i = 0;
 						do {
-							if (bufferMessage.isValidRoute(_oscConsumers[i]->pattern())) {
-								_oscConsumers[i]->callbackMessage(&bufferMessage);
+							if (_bufferMessage->isValidRoute(_oscConsumers[i]->pattern())) {
+								_oscConsumers[i]->callbackMessage(_bufferMessage);
 							}
 						} while (++i < _consumers);
 					}
@@ -114,7 +121,7 @@ namespace OSC {
 					_oscProducers[i]->loop();
 
 					if (send) {
-						Message * message = _oscProducers[i]->generateMessage();
+						IMessage * message = _oscProducers[i]->generateMessage();
 
 						if (message->isSendableMessage()) {
 							message->send(_serialHandle);
@@ -128,18 +135,18 @@ namespace OSC {
 					if ((size = _serialHandle->available()) > 0) {
 
 						// make sure buffer is big enough
-						bufferMessage.reserveBuffer(size);
+						_bufferMessage->reserveBuffer(size);
 
 						// write udp data to buffer
-						_serialHandle->readBytes(bufferMessage.processBuffer, size);
+						_serialHandle->readBytes(_bufferMessage->processBuffer, size);
 
 						// reuse the same message everytime to save repetitive memory allocations
-						bufferMessage.process();
+						_bufferMessage->process();
 
 						i = 0;
 						do {
-							if (bufferMessage.isValidRoute(_oscConsumers[i]->pattern())) {
-								_oscConsumers[i]->callbackMessage(&bufferMessage);
+							if (_bufferMessage->isValidRoute(_oscConsumers[i]->pattern())) {
+								_oscConsumers[i]->callbackMessage(_bufferMessage);
 							}
 						} while (++i < _consumers);
 					}
@@ -147,6 +154,6 @@ namespace OSC {
 			}
 		}
 
-		Message bufferMessage = Message();
+		IMessage * _bufferMessage;
 	};
 }
