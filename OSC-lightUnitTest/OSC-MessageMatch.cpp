@@ -3,6 +3,7 @@
 
 #include "Print.h"
 
+#include "..\OSC-light\IMessage.h"
 #include "..\OSC-light\OSCMessage.h"
 #include "..\OSC-light\OSCStructMessage.h"
 #include "..\OSC-light\OSCMatch.h"
@@ -91,7 +92,7 @@ enum class DataTypes
 
 namespace OSClightUnitTest
 {
-	class OSCProducerConsumer : public OSC::MessageConsumer, public OSC::MessageProducer
+	class OSCProducerConsumer : public OSC::MessageConsumer<OSC::Message>, public OSC::MessageProducer<OSC::Message>
 	{
 	public:
 		OSC::Message message;
@@ -108,7 +109,7 @@ namespace OSClightUnitTest
 			message.setValidData(true);
 		}
 
-		OSC::IMessage * generateMessage() {
+		OSC::Message * generateMessage() {
 			message.setValidData(true);
 			return &message;
 		}
@@ -117,10 +118,68 @@ namespace OSClightUnitTest
 			return message.address;
 		}
 
-		void callbackMessage(OSC::IMessage * msg) {
+		void callbackMessage(OSC::Message * msg) {
 
 		}
 	};
+
+	class OSCStructProducerConsumer : public OSC::MessageConsumer<OSC::StructMessage<Data, uint32_t>>, public OSC::MessageProducer<OSC::StructMessage<Data, uint32_t>>
+	{
+	public:
+		OSC::StructMessage<Data, uint32_t> message;
+
+		OSCStructProducerConsumer() {
+			message = OSC::StructMessage<Data, uint32_t>();
+			message.setAddress("/Some/Test/Address");
+		}
+
+		void loop() {
+			message.setValidData(true);
+		}
+
+		OSC::StructMessage<Data, uint32_t> * generateMessage() {
+			message.setValidData(true);
+			return &message;
+		}
+
+		const char * pattern() {
+			return message.address;
+		}
+
+		void callbackMessage(OSC::StructMessage<Data, uint32_t> * msg) {
+
+		}
+	};
+
+
+	class OSCStruct8bitProducerConsumer : public OSC::MessageConsumer<OSC::StructMessage<DataType1_8bit, uint8_t>>, public OSC::MessageProducer<OSC::StructMessage<DataType1_8bit, uint8_t>>
+	{
+	public:
+		OSC::StructMessage<DataType1_8bit, uint8_t> message;
+
+		OSCStruct8bitProducerConsumer() {
+			message = OSC::StructMessage<DataType1_8bit, uint8_t>();
+			message.setAddress("/Some/Test/Address");
+		}
+
+		void loop() {
+			message.setValidData(true);
+		}
+
+		OSC::StructMessage<DataType1_8bit, uint8_t> * generateMessage() {
+			message.setValidData(true);
+			return &message;
+		}
+
+		const char * pattern() {
+			return message.address;
+		}
+
+		void callbackMessage(OSC::StructMessage<DataType1_8bit, uint8_t> * msg) {
+
+		}
+	};
+
 
 	class OSCDataConsumer : public OSC::StructMessageConsumer<DataTypes, uint32_t>
 	{
@@ -164,7 +223,7 @@ namespace OSClightUnitTest
 		}
 	};
 
-	class OSCDataProducer : public OSC::MessageProducer
+	class OSCDataProducer : public OSC::MessageProducer<OSC::Message>
 	{
 	public:
 		OSC::Message message;
@@ -176,16 +235,31 @@ namespace OSClightUnitTest
 
 		}
 
-		OSC::IMessage * generateMessage() {
+		OSC::Message * generateMessage() {
 
 
 			return &message;
 		}
 	};
 
+	class OSCStructDataConsumer : public OSC::MessageConsumer<OSC::StructMessage<Data, uint32_t>> {
+	public:
+		OSC::StructMessage<Data, uint32_t> * structMessage;
+
+		const char * pattern()
+		{
+			return "/Test";
+		}
+		void callbackMessage(OSC::StructMessage<Data, uint32_t> * message)
+		{
+			structMessage = message;
+		}
+	};
+
 	TEST_CLASS(OSClightUnitTest)
 	{
 	public:
+
 
 		TEST_METHOD(OSCEqualMatchesTest) {
 			auto tester = OSC::Match();
@@ -258,6 +332,7 @@ namespace OSClightUnitTest
 			Assert::IsTrue(message.isValidRoute("/M"));
 			Assert::IsFalse(message.isValidRoute("/New/Address"));
 		}
+
 
 		// MESSAGE
 		TEST_METHOD(OSCMessageContentTest) {
@@ -483,13 +558,13 @@ namespace OSClightUnitTest
 			OSC.loop(true);
 			OSC.loop(true);
 
-			int bufferSizePre = OSC._bufferMessage->bufferLength;
+			int bufferSizePre = OSC.bufferMessage.bufferLength;
 
 			for (int i = 0; i < 1000; i++) {
 				OSC.loop(true);
 			}
 
-			int bufferSizePost = OSC._bufferMessage->bufferLength;
+			int bufferSizePost = OSC.bufferMessage.bufferLength;
 
 			Assert::AreEqual(bufferSizePre, bufferSizePost, L"Buffer message buffers not equal after 1000 loops", LINE_INFO());
 		}
@@ -509,16 +584,17 @@ namespace OSClightUnitTest
 			OSC.loop(true);
 			OSC.loop(true);
 
-			int bufferSizePre = OSC._bufferMessage->bufferLength;
+			int bufferSizePre = OSC.bufferMessage.bufferLength;
 
 			for (int i = 0; i < 1000; i++) {
 				OSC.loop(true);
 			}
 
-			int bufferSizePost = OSC._bufferMessage->bufferLength;
+			int bufferSizePost = OSC.bufferMessage.bufferLength;
 
 			Assert::AreEqual(bufferSizePre, bufferSizePost, L"Buffer message buffers not equal after 1000 loops", LINE_INFO());
 		}
+
 
 		// MESSAGE STRUCT
 		TEST_METHOD(OSCStructMessageContentTest) {
@@ -587,7 +663,7 @@ namespace OSClightUnitTest
 			auto print = Print();
 
 			message.setAddress("/Some/Address");
-			
+
 			message.messageStruct.int1 = 1;
 			message.messageStruct.int2 = 2;
 			message.messageStruct.int3 = 3;
@@ -669,7 +745,7 @@ namespace OSClightUnitTest
 			Assert::IsTrue(message.messageStruct.int2 == newMessage.messageStruct.int2, L"Int 2 not the same", LINE_INFO());
 			Assert::IsTrue(message.messageStruct.int3 == newMessage.messageStruct.int3, L"Int 3 not the same", LINE_INFO());
 			Assert::IsTrue(message.messageStruct.int4 == newMessage.messageStruct.int4, L"Int 4 not the same", LINE_INFO());
-			
+
 			Assert::IsTrue(strcmp(message.address, newMessage.address) == 0);
 
 			int bufferLength = newMessage.bufferLength;
@@ -769,13 +845,11 @@ namespace OSClightUnitTest
 			Assert::AreEqual((uint8_t)4u, message.messageStruct.int4, L"Integers not equal", LINE_INFO());
 		}
 
-		// TODO: loop
-
 		TEST_METHOD(OSCStructLoop) {
 			auto OSC = OSC::Arduino<OSC::StructMessage<Data, uint32_t>>(1, 1);
 			auto Udp = UDP();
 
-			auto prodCons = OSCProducerConsumer();
+			auto prodCons = OSCStructProducerConsumer();
 
 			OSC.bindUDP(&Udp, 1, 1);
 
@@ -786,23 +860,22 @@ namespace OSClightUnitTest
 			OSC.loop(true);
 			OSC.loop(true);
 
-			int bufferSizePre = OSC._bufferMessage->bufferLength;
+			int bufferSizePre = OSC.bufferMessage.bufferLength;
 
 			for (int i = 0; i < 1000; i++) {
 				OSC.loop(true);
 			}
 
-			int bufferSizePost = OSC._bufferMessage->bufferLength;
+			int bufferSizePost = OSC.bufferMessage.bufferLength;
 
 			Assert::AreEqual(bufferSizePre, bufferSizePost, L"Buffer message buffers not equal after 1000 loops", LINE_INFO());
 		}
-
 
 		TEST_METHOD(OSCStructLoopStream) {
 			auto OSC = OSC::Arduino<OSC::StructMessage<Data, uint32_t>>(1, 1);
 			auto stream = Stream();
 
-			auto prodCons = OSCProducerConsumer();
+			auto prodCons = OSCStructProducerConsumer();
 
 			OSC.bindStream(&stream);
 
@@ -813,13 +886,13 @@ namespace OSClightUnitTest
 			OSC.loop(true);
 			OSC.loop(true);
 
-			int bufferSizePre = OSC._bufferMessage->bufferLength;
+			int bufferSizePre = OSC.bufferMessage.bufferLength;
 
 			for (int i = 0; i < 1000; i++) {
 				OSC.loop(true);
 			}
 
-			int bufferSizePost = OSC._bufferMessage->bufferLength;
+			int bufferSizePost = OSC.bufferMessage.bufferLength;
 
 			Assert::AreEqual(bufferSizePre, bufferSizePost, L"Buffer message buffers not equal after 1000 loops", LINE_INFO());
 		}
@@ -828,7 +901,7 @@ namespace OSClightUnitTest
 			auto OSC = OSC::Arduino<OSC::StructMessage<DataType1_8bit, uint8_t>>(1, 1);
 			auto Udp = UDP();
 
-			auto prodCons = OSCProducerConsumer();
+			auto prodCons = OSCStruct8bitProducerConsumer();
 
 			OSC.bindUDP(&Udp, 1, 1);
 
@@ -839,13 +912,13 @@ namespace OSClightUnitTest
 			OSC.loop(true);
 			OSC.loop(true);
 
-			int bufferSizePre = OSC._bufferMessage->bufferLength;
+			int bufferSizePre = OSC.bufferMessage.bufferLength;
 
 			for (int i = 0; i < 1000; i++) {
 				OSC.loop(true);
 			}
 
-			int bufferSizePost = OSC._bufferMessage->bufferLength;
+			int bufferSizePost = OSC.bufferMessage.bufferLength;
 
 			Assert::AreEqual(bufferSizePre, bufferSizePost, L"Buffer message buffers not equal after 1000 loops", LINE_INFO());
 		}
@@ -855,7 +928,7 @@ namespace OSClightUnitTest
 			auto OSC = OSC::Arduino<OSC::StructMessage<DataType1_8bit, uint8_t>>(1, 1);
 			auto stream = Stream();
 
-			auto prodCons = OSCProducerConsumer();
+			auto prodCons = OSCStruct8bitProducerConsumer();
 
 			OSC.bindStream(&stream);
 
@@ -866,13 +939,13 @@ namespace OSClightUnitTest
 			OSC.loop(true);
 			OSC.loop(true);
 
-			int bufferSizePre = OSC._bufferMessage->bufferLength;
+			int bufferSizePre = OSC.bufferMessage.bufferLength;
 
 			for (int i = 0; i < 1000; i++) {
 				OSC.loop(true);
 			}
 
-			int bufferSizePost = OSC._bufferMessage->bufferLength;
+			int bufferSizePost = OSC.bufferMessage.bufferLength;
 
 			Assert::AreEqual(bufferSizePre, bufferSizePost, L"Buffer message buffers not equal after 1000 loops", LINE_INFO());
 		}
@@ -909,7 +982,7 @@ namespace OSClightUnitTest
 			auto valueRegular = diffRegular.count();
 
 			auto messageStruct = OSC::StructMessage<Data, uint32_t>();
-			
+
 			auto startStruct = std::chrono::system_clock::now();
 
 			messageStruct.setAddress("/M");
@@ -918,7 +991,7 @@ namespace OSClightUnitTest
 			messageStruct.messageStruct.int3 = 1234;
 			messageStruct.messageStruct.int4 = 12345;
 			messageStruct.messageStruct.int5 = 123456;
-			
+
 			for (int i = 0; i < n; i++) {
 				messageStruct.send(&print);
 				messageStruct.processBuffer = print.buffer;
@@ -933,6 +1006,7 @@ namespace OSClightUnitTest
 
 			Assert::IsTrue(valueStruct < valueRegular, L"Better method faster", LINE_INFO());
 		}
+
 
 		// STRUCT Message Consumer
 		TEST_METHOD(OSCReadAsStruct) {
@@ -1630,5 +1704,36 @@ namespace OSClightUnitTest
 			Assert::IsTrue(message.getDataType(19) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
 			Assert::IsTrue(message.getDataType(20) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
 		}
+
+
+		TEST_METHOD(OSCReadMessageStruct) {
+			auto message = OSC::StructMessage<Data, uint32_t>();
+
+			auto structCons = OSCStructDataConsumer();
+
+			message.setAddress(structCons.pattern());
+			message.messageStruct.int1 = 1;
+			message.messageStruct.int2 = 2;
+			message.messageStruct.int3 = 3;
+			message.messageStruct.int4 = 4;
+			message.messageStruct.int5 = 5;
+
+			auto OSC = OSC::Arduino<OSC::StructMessage<Data, uint32_t>>(1, 0);
+			auto Udp = UDP();
+
+			OSC.bindUDP(&Udp, 1, 1);
+			OSC.addConsumer(&structCons);
+
+			message.send(&Udp);
+
+			OSC.loop(false);
+
+			Assert::AreEqual(1u, structCons.structMessage->messageStruct.int1, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(2u, structCons.structMessage->messageStruct.int2, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(3u, structCons.structMessage->messageStruct.int3, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(4u, structCons.structMessage->messageStruct.int4, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual(5u, structCons.structMessage->messageStruct.int5, L"Struct does not contain same value", LINE_INFO());
+		}
+
 	};
 }

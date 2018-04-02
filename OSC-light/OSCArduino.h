@@ -15,15 +15,15 @@ typedef unsigned int uint32_t;
 
 namespace OSC {
 
-	template <class MessageType>
+	template <class MessageType = Message>
 	class Arduino
 	{
 	private:
 		UDP * _udpHandle;
 		Stream * _serialHandle;
 
-		MessageProducer ** _oscProducers;
-		MessageConsumer ** _oscConsumers;
+		MessageProducer<MessageType> ** _oscProducers;
+		MessageConsumer<MessageType> ** _oscConsumers;
 
 		IPAddress _remoteIP;
 		int _remotePort;
@@ -33,16 +33,16 @@ namespace OSC {
 
 		bool _useSerial = false;
 
-
 	public:
+		MessageType bufferMessage;
 
 		Arduino() {}
 
 		Arduino(int consumers, int producers) {
-			_oscConsumers = new MessageConsumer*[consumers];
-			_oscProducers = new MessageProducer*[producers];
+			_oscConsumers = new MessageConsumer<MessageType>*[consumers];
+			_oscProducers = new MessageProducer<MessageType>*[producers];
 
-			_bufferMessage = new MessageType();
+			bufferMessage = MessageType();
 		}
 
 		// binds UDP handle to receive and send OSC messages 
@@ -58,12 +58,12 @@ namespace OSC {
 		}
 
 		// adds an OSC message consumer
-		void addConsumer(MessageConsumer * consumer) {
+		void addConsumer(MessageConsumer<MessageType> * consumer) {
 			_oscConsumers[_consumers++] = consumer;
 		}
 
 		// adds an OSC message producer
-		void addProducer(MessageProducer * producer) {
+		void addProducer(MessageProducer<MessageType> * producer) {
 			_oscProducers[_producers++] = producer;
 		}
 
@@ -81,7 +81,7 @@ namespace OSC {
 					_oscProducers[i]->loop();
 
 					if (send) {
-						IMessage * message = _oscProducers[i]->generateMessage();
+						MessageType * message = _oscProducers[i]->generateMessage();
 
 						if (message->isSendableMessage()) {
 							_udpHandle->beginPacket(_remoteIP, _remotePort);
@@ -97,18 +97,18 @@ namespace OSC {
 					if ((size = _udpHandle->parsePacket()) > 0) {
 
 						// make sure buffer is big enough
-						_bufferMessage->reserveBuffer(size);
+						bufferMessage.reserveBuffer(size);
 
 						// write udp data to buffer
-						_udpHandle->read(_bufferMessage->processBuffer, size);
+						_udpHandle->read(bufferMessage.processBuffer, size);
 
 						// reuse the same message everytime to save repetitive memory allocations
-						_bufferMessage->process();
+						bufferMessage.process();
 
 						i = 0;
 						do {
-							if (_bufferMessage->isValidRoute(_oscConsumers[i]->pattern())) {
-								_oscConsumers[i]->callbackMessage(_bufferMessage);
+							if (bufferMessage.isValidRoute(_oscConsumers[i]->pattern())) {
+								_oscConsumers[i]->callbackMessage(&bufferMessage);
 							}
 						} while (++i < _consumers);
 					}
@@ -135,25 +135,23 @@ namespace OSC {
 					if ((size = _serialHandle->available()) > 0) {
 
 						// make sure buffer is big enough
-						_bufferMessage->reserveBuffer(size);
+						bufferMessage.reserveBuffer(size);
 
 						// write udp data to buffer
-						_serialHandle->readBytes(_bufferMessage->processBuffer, size);
+						_serialHandle->readBytes(bufferMessage.processBuffer, size);
 
 						// reuse the same message everytime to save repetitive memory allocations
-						_bufferMessage->process();
+						bufferMessage.process();
 
 						i = 0;
 						do {
-							if (_bufferMessage->isValidRoute(_oscConsumers[i]->pattern())) {
-								_oscConsumers[i]->callbackMessage(_bufferMessage);
+							if (bufferMessage.isValidRoute(_oscConsumers[i]->pattern())) {
+								_oscConsumers[i]->callbackMessage(&bufferMessage);
 							}
 						} while (++i < _consumers);
 					}
 				}
 			}
 		}
-
-		IMessage * _bufferMessage;
 	};
 }

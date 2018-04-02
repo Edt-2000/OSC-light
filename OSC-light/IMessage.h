@@ -6,6 +6,9 @@
 #include <Print.h>
 #endif
 
+#include "OSCData.h"
+#include "OSCMatch.h"
+
 namespace OSC {
 
 	// static helpers
