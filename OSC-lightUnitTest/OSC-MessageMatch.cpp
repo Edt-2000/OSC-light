@@ -7,8 +7,10 @@
 #include "..\OSC-light\OSCMessage.h"
 #include "..\OSC-light\OSCStructMessage.h"
 #include "..\OSC-light\OSCMatch.h"
-
 #include "..\OSC-light\OSCArduino.h"
+
+// TODO: remove this dependency
+#include "../../Edt-Arduinosaurus/Arduino/libraries/Edt-lib/OSCMessageDefinitions.h"
 
 #include <chrono>
 
@@ -151,7 +153,6 @@ namespace OSClightUnitTest
 		}
 	};
 
-
 	class OSCStruct8bitProducerConsumer : public OSC::MessageConsumer<OSC::StructMessage<DataType1_8bit, uint8_t>>, public OSC::MessageProducer<OSC::StructMessage<DataType1_8bit, uint8_t>>
 	{
 	public:
@@ -179,7 +180,6 @@ namespace OSClightUnitTest
 
 		}
 	};
-
 
 	class OSCDataConsumer : public OSC::StructMessageConsumer<DataTypes, uint32_t>
 	{
@@ -248,9 +248,23 @@ namespace OSClightUnitTest
 
 		const char * pattern()
 		{
-			return "/Test";
+			return "/Some/Address";
 		}
 		void callbackMessage(OSC::StructMessage<Data, uint32_t> * message)
+		{
+			structMessage = message;
+		}
+	};
+
+	class OSCEdtMessageConsumer : public OSC::MessageConsumer<OSC::StructMessage<OSC::EdtMessage, uint8_t>> {
+	public:
+		OSC::StructMessage<OSC::EdtMessage, uint8_t> * structMessage;
+
+		const char * pattern()
+		{
+			return "/Some/Address";
+		}
+		void callbackMessage(OSC::StructMessage<OSC::EdtMessage, uint8_t> * message)
 		{
 			structMessage = message;
 		}
@@ -1733,6 +1747,105 @@ namespace OSClightUnitTest
 			Assert::AreEqual(3u, structCons.structMessage->messageStruct.int3, L"Struct does not contain same value", LINE_INFO());
 			Assert::AreEqual(4u, structCons.structMessage->messageStruct.int4, L"Struct does not contain same value", LINE_INFO());
 			Assert::AreEqual(5u, structCons.structMessage->messageStruct.int5, L"Struct does not contain same value", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCReadEdtMessageStruct) {
+			auto message = OSC::StructMessage<OSC::EdtMessage, uint8_t>();
+
+			auto structCons = OSCEdtMessageConsumer();
+
+			message.setAddress(structCons.pattern());
+			message.messageStruct.command = OSC::ColorCommands::SinglePulse;
+			message.messageStruct.commands.singleColor.duration = 1;
+			message.messageStruct.commands.singleColor.end = 2;
+			message.messageStruct.commands.singleColor.hue = 3;
+			message.messageStruct.commands.singleColor.saturation = 4;
+			message.messageStruct.commands.singleColor.start = 5;
+			message.messageStruct.commands.singleColor.value = 6;
+
+			auto OSC = OSC::Arduino<OSC::StructMessage<OSC::EdtMessage, uint8_t>>(1, 0);
+			auto Udp = UDP();
+
+			OSC.bindUDP(&Udp, 1, 1);
+			OSC.addConsumer(&structCons);
+
+			message.send(&Udp);
+
+			OSC.loop(false);
+
+			Assert::AreEqual((int)OSC::ColorCommands::SinglePulse, (int)structCons.structMessage->messageStruct.command, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual((uint8_t)1, structCons.structMessage->messageStruct.commands.singleColor.duration, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual((uint8_t)2, structCons.structMessage->messageStruct.commands.singleColor.end, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual((uint8_t)3, structCons.structMessage->messageStruct.commands.singleColor.hue, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual((uint8_t)4, structCons.structMessage->messageStruct.commands.singleColor.saturation, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual((uint8_t)5, structCons.structMessage->messageStruct.commands.singleColor.start, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual((uint8_t)6, structCons.structMessage->messageStruct.commands.singleColor.value, L"Struct does not contain same value", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCReadEdtMessageFromRawStruct) {
+			auto message = OSC::StructMessage<OSC::EdtMessage, uint8_t>();
+			auto structCons = OSCEdtMessageConsumer();
+			auto print = Print();
+
+			std::string testString = "/Some/Address___,iiiiiii_______\x1___\x2___\x3___\x4___\x5___\x6___\x7";
+			int length = testString.length();
+
+			print.write(testString.c_str(), length);
+
+			message.setAddress("/Some/Address");
+			message.reserveBuffer(length);
+			memcpy(message.processBuffer, print.reversedBuffer, length);
+
+			message.process(false);
+
+			auto OSC = OSC::Arduino<OSC::StructMessage<OSC::EdtMessage, uint8_t>>(1, 0);
+			auto Udp = UDP();
+
+			OSC.bindUDP(&Udp, 1, 1);
+			OSC.addConsumer(&structCons);
+
+			message.send(&Udp, false);
+
+			OSC.loop(false);
+
+			Assert::AreEqual((int)OSC::ColorCommands::SinglePulse, (int)structCons.structMessage->messageStruct.command, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual((uint8_t)7, structCons.structMessage->messageStruct.commands.singleColor.duration, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual((uint8_t)3, structCons.structMessage->messageStruct.commands.singleColor.end, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual((uint8_t)4, structCons.structMessage->messageStruct.commands.singleColor.hue, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual((uint8_t)5, structCons.structMessage->messageStruct.commands.singleColor.saturation, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual((uint8_t)2, structCons.structMessage->messageStruct.commands.singleColor.start, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual((uint8_t)6, structCons.structMessage->messageStruct.commands.singleColor.value, L"Struct does not contain same value", LINE_INFO());
+		}
+
+		TEST_METHOD(OSCReadEdtMessageFromRaw2Struct) {
+			auto message = OSC::StructMessage<OSC::EdtMessage, uint8_t>();
+			auto structCons = OSCEdtMessageConsumer();
+			auto print = Print();
+
+			std::string testString = "/Some/Address___,iii_______\x6___\x2___\x3";
+			int length = testString.length();
+
+			print.write(testString.c_str(), length);
+
+			message.setAddress("/Some/Address");
+			message.reserveBuffer(length);
+			memcpy(message.processBuffer, print.reversedBuffer, length);
+
+			message.process(false);
+
+			auto OSC = OSC::Arduino<OSC::StructMessage<OSC::EdtMessage, uint8_t>>(1, 0);
+			auto Udp = UDP();
+
+			OSC.bindUDP(&Udp, 1, 1);
+			OSC.addConsumer(&structCons);
+
+			message.send(&Udp, false);
+
+			OSC.loop(false);
+
+			Assert::AreEqual((int)OSC::ColorCommands::Strobo, (int)structCons.structMessage->messageStruct.command, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual((uint8_t)2, structCons.structMessage->messageStruct.commands.strobo.hue, L"Struct does not contain same value", LINE_INFO());
+			Assert::AreEqual((uint8_t)3, structCons.structMessage->messageStruct.commands.strobo.intensity, L"Struct does not contain same value", LINE_INFO());
 		}
 
 	};

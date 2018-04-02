@@ -1,7 +1,9 @@
 #pragma once
 
 // OSC light implementation for Arduino
+#include "IMessage.h"
 #include "OSCMessage.h"
+#include "OSCStructMessage.h"
 #include "OSCMessageConsumer.h"
 #include "OSCMessageProducer.h"
 

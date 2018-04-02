@@ -20,13 +20,13 @@ namespace OSC {
 
 	public:
 		// Length of the process buffer
-		int bufferLength = 0;
+		int bufferLength = 4;
 
 		// Process buffer for writing raw OSC data
-		char * processBuffer;
+		char * processBuffer = new char[4];
 
 		// Sub process buffer for writing chucks of buffered raw OSC data
-		char * subBuffer;
+		char * subBuffer = new char[4];
 
 		// Char array containing the address 
 		char * address;
@@ -34,7 +34,7 @@ namespace OSC {
 		// Sets the address of the message.
 		void setAddress(const char * newAddress) {
 			if (address != nullptr) {
-				delete[] address;
+				delete address;
 			}
 
 			address = new char[strlen(newAddress) + 1];

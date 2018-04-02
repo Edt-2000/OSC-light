@@ -15,15 +15,15 @@ namespace OSC {
 	class StructMessage : public IMessage
 	{
 	public:
-		Struct messageStruct;
+		Struct messageStruct = Struct();
 
 		StructMessage() {
 			address = NULL;
 		}
 		~StructMessage() {
 			if (bufferLength > 0) {
-				delete[] processBuffer;
-				delete[] subBuffer;
+				delete processBuffer;
+				delete subBuffer;
 			}
 		}
 

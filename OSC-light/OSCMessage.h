@@ -34,11 +34,11 @@ namespace OSC {
 		}
 		~Message() {
 			if (reservedCount > 0) {
-				delete[] data;
+				delete data;
 			}
 			if(bufferLength > 0) {
-				delete[] processBuffer;
-				delete[] subBuffer;
+				delete processBuffer;
+				delete subBuffer;
 			}
 		}
 
@@ -49,7 +49,7 @@ namespace OSC {
 			if (reservedCount > 0) {
 				tempBuffer = new Data[reservedCount];
 				memcpy(tempBuffer, data, reservedCount * sizeof(Data));
-				delete[] data;
+				delete data;
 			}
 
 			reservedCount += count;
@@ -57,7 +57,7 @@ namespace OSC {
 
 			if (reservedCount > count) {
 				memcpy(data, tempBuffer, (reservedCount - count) * sizeof(Data));
-				delete[] tempBuffer;
+				delete tempBuffer;
 			}
 		}
 
