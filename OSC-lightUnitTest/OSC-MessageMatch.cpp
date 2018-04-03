@@ -9,9 +9,6 @@
 #include "..\OSC-light\OSCMatch.h"
 #include "..\OSC-light\OSCArduino.h"
 
-// TODO: remove this dependency
-#include "../../Edt-Arduinosaurus/Arduino/libraries/Edt-lib/OSCMessageDefinitions.h"
-
 #include <chrono>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
@@ -90,6 +87,118 @@ enum class DataTypes
 
 	ShortStruct = 4,
 	LongStruct = 5
+};
+
+enum ColorCommands : uint8_t
+{
+	SingleSolid = 0,
+	SinglePulse = 1,
+	SingleSpark = 7,
+	RainbowSolid = 2,
+	RainbowPulse = 3,
+	RainbowSpark = 8,
+	VuMeter = 4,
+	Twinkle = 5,
+	Strobo = 6,
+	DualSolid = 9,
+	DualPulse = 10,
+	DualSparkle = 11,
+	Kitt = 12
+};
+
+struct SingleColorCommand
+{
+	// 0 - 127
+	uint8_t start : 8;
+	uint8_t end : 8;
+
+	// 0 - 255
+	uint8_t hue : 8;
+	uint8_t saturation : 8;
+	uint8_t value : 8;
+	uint8_t duration : 8;
+};
+
+struct DualColorCommand
+{
+	// 0 - 127
+	uint8_t start : 8;
+	uint8_t end : 8;
+
+	// 0 - 255
+	uint8_t hue1 : 8;
+	uint8_t hue2 : 8;
+	uint8_t percentage : 8;
+	uint8_t duration : 8;
+};
+
+struct RainbowCommand
+{
+	// 0 - 127
+	uint8_t start : 8;
+	uint8_t end : 8;
+
+	// 0 - 255
+	uint8_t hue : 8;
+	uint8_t deltaHue : 8;
+	uint8_t duration : 8;
+};
+
+struct VuMeterCommand
+{
+	// 0 - 127
+	uint8_t start : 8;
+	uint8_t end : 8;
+	uint8_t center : 8;
+
+	// 0 - 255
+	uint8_t hue : 8;
+	uint8_t deltaHue : 8;
+	uint8_t intensity : 8;
+};
+
+struct TwinkleCommand
+{
+	// 0 - 127
+	uint8_t start : 8;
+	uint8_t end : 8;
+
+	// 0 - 255
+	uint8_t hue : 8;
+	uint8_t intensity : 8;
+};
+
+struct KittCommand
+{
+	// 0 - 127
+	uint8_t position : 8;
+	uint8_t length : 8;
+
+	// 0 - 255
+	uint8_t hue : 8;
+};
+
+struct StroboCommand
+{
+	// 0 - 255
+	uint8_t hue : 8;
+	uint8_t intensity : 8;
+};
+
+struct EdtMessage
+{
+	ColorCommands command : 8;
+	union Commands {
+		SingleColorCommand singleColor;
+		DualColorCommand dualColor;
+		RainbowCommand rainbow;
+		VuMeterCommand vuMeter;
+		TwinkleCommand twinkle;
+		KittCommand kitt;
+		StroboCommand strobo;
+	};
+
+	Commands commands;
 };
 
 namespace OSClightUnitTest
@@ -181,7 +290,7 @@ namespace OSClightUnitTest
 		}
 	};
 
-	class OSCDataConsumer : public OSC::StructMessageConsumer<DataTypes, uint32_t>
+	/*class OSCDataConsumer : public OSC::StructMessageConsumer<DataTypes, uint32_t>
 	{
 	public:
 		OSC::Message message;
@@ -200,9 +309,9 @@ namespace OSClightUnitTest
 			calledbackEnum = dataTypeEnum;
 			callbackCallCount++;
 		}
-	};
+	};*/
 
-	class OSCDataConsumer_8bit : public OSC::StructMessageConsumer<DataTypes, uint8_t>
+	/*class OSCDataConsumer_8bit : public OSC::StructMessageConsumer<DataTypes, uint8_t>
 	{
 	public:
 		OSC::Message message;
@@ -221,7 +330,7 @@ namespace OSClightUnitTest
 			calledbackEnum = dataTypeEnum;
 			callbackCallCount++;
 		}
-	};
+	};*/
 
 	class OSCDataProducer : public OSC::MessageProducer<OSC::Message>
 	{
@@ -256,15 +365,15 @@ namespace OSClightUnitTest
 		}
 	};
 
-	class OSCEdtMessageConsumer : public OSC::MessageConsumer<OSC::StructMessage<OSC::EdtMessage, uint8_t>> {
+	class OSCEdtMessageConsumer : public OSC::MessageConsumer<OSC::StructMessage<EdtMessage, uint8_t>> {
 	public:
-		OSC::StructMessage<OSC::EdtMessage, uint8_t> * structMessage;
+		OSC::StructMessage<EdtMessage, uint8_t> * structMessage;
 
 		const char * pattern()
 		{
 			return "/Some/Address";
 		}
-		void callbackMessage(OSC::StructMessage<OSC::EdtMessage, uint8_t> * message)
+		void callbackMessage(OSC::StructMessage<EdtMessage, uint8_t> * message)
 		{
 			structMessage = message;
 		}
@@ -1023,831 +1132,913 @@ namespace OSClightUnitTest
 
 		// TODO: speed test with complete setup
 
-		// STRUCT Message Consumer
-		TEST_METHOD(OSCReadAsStruct) {
-			auto message = OSC::Message();
+		TEST_METHOD(OSCFullCycleSpeed) {
+			int n = 1000;
 
-			auto structCons = OSCDataConsumer(5);
+			auto Udp = UDP();
 
-			message.setAddress("/Some/Address");
-			message.empty();
-			message.addInt(1);
-			message.addInt(2);
-			message.addInt(3);
-			message.addInt(4);
-			message.addInt(5);
+			auto rOSC = OSC::Arduino<OSC::Message>(4, 1);
 
-			auto data = Data();
+			auto rprodCons = OSCProducerConsumer();
 
-			structCons.readToStruct(&message, (unsigned char*)&data, sizeof(Data));
+			rOSC.bindUDP(&Udp, 1, 1);
 
-			Assert::AreEqual(1u, data.int1, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(2u, data.int2, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(3u, data.int3, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(4u, data.int4, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(5u, data.int5, L"Struct does not contain same value", LINE_INFO());
-		}
+			rOSC.addConsumer(&rprodCons);
+			rOSC.addConsumer(&rprodCons);
+			rOSC.addConsumer(&rprodCons);
+			rOSC.addConsumer(&rprodCons);
+			rOSC.addProducer(&rprodCons);
 
-		TEST_METHOD(OSCReadAsStruct2) {
-			auto message = OSC::Message();
+			// complete a full write and a full read write and then store buffer sizes
+			rOSC.loop(true);
+			rOSC.loop(true);
 
-			auto structCons = OSCDataConsumer(5);
+			int rbufferSizePre = rOSC.bufferMessage.bufferLength;
+			
+			auto startRegular = std::chrono::system_clock::now();
 
-			message.setAddress("/Some/Address");
-			message.empty();
-			message.addInt(1);
-			message.addFloat(2.345f);
-			message.addInt(3);
-			message.addFloat(441910.191f);
+			for (int i = 0; i < n; i++) {
+				rOSC.loop(true);
+			}
+			
+			auto endRegular = std::chrono::system_clock::now();
 
-			auto data = Data2();
+			int rbufferSizePost = rOSC.bufferMessage.bufferLength;
 
-			structCons.readToStruct(&message, (unsigned char*)&data, sizeof(Data2));
+			Assert::AreEqual(rbufferSizePre, rbufferSizePost, L"Buffer message buffers not equal after n loops", LINE_INFO());
 
-			Assert::AreEqual(1u, data.int1, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(2.345f, data.float1, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(3u, data.int2, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(441910.191f, data.float2, L"Struct does not contain same value", LINE_INFO());
-		}
 
-		TEST_METHOD(OSCStagedStructs) {
+			std::chrono::duration<double> diffRegular = endRegular - startRegular;
 
-			auto type1 = DataType1();
-			auto type2 = DataType2();
-			auto type3 = DataType3();
-			auto type4 = DataType4();
+			auto valueRegular = diffRegular.count();
 
-			auto structCons = OSCDataConsumer(4);
+			auto messageStruct = OSC::StructMessage<Data, uint32_t>();
 
-			structCons.addEnumToStructMapping<DataType1>(DataTypes::DataType1, &type1);
-			structCons.addEnumToStructMapping<DataType2>(DataTypes::DataType2, &type2);
-			structCons.addEnumToStructMapping<DataType3>(DataTypes::DataType3, &type3);
-			structCons.addEnumToStructMapping<DataType4>(DataTypes::DataType4, &type4);
 
-			auto message = OSC::Message();
+			auto sOSC = OSC::Arduino<OSC::StructMessage<Data, uint32_t>>(1, 1);
+			
+			auto sprodCons = OSCStructProducerConsumer();
 
-			for (int i = 1; i <= 4; ++i) {
-				message.empty();
-				message.reserveAtLeast(5);
-				message.addInt((i * 1) - 1);
-				message.addInt(i * 1);
-				message.addInt(i * 2);
-				message.addInt(i * 3);
-				message.addInt(i * 4);
+			sOSC.bindUDP(&Udp, 4, 1);
 
-				structCons.callbackMessage(&message);
+			sOSC.addConsumer(&sprodCons);
+			sOSC.addConsumer(&sprodCons);
+			sOSC.addConsumer(&sprodCons);
+			sOSC.addConsumer(&sprodCons);
+			sOSC.addProducer(&sprodCons);
 
-				if (i == 1) {
-					Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType1, L"Wrong enum response", LINE_INFO());
+			// complete a full write and a full read write and then store buffer sizes
+			sOSC.loop(true);
+			sOSC.loop(true);
 
-					Assert::AreEqual(1u, type1.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(2u, type1.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(3u, type1.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(4u, type1.int4, L"Struct does not contain same value", LINE_INFO());
+			int sbufferSizePre = sOSC.bufferMessage.bufferLength;
 
-					Assert::AreNotEqual(1u, type2.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(2u, type2.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(3u, type2.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(4u, type2.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(1u, type3.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(2u, type3.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(3u, type3.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(4u, type3.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(1u, type4.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(2u, type4.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(3u, type4.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(4u, type4.int4, L"Struct does not contain same value", LINE_INFO());
-				}
-
-				if (i == 2) {
-					Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType2, L"Wrong enum response", LINE_INFO());
-
-					Assert::AreEqual(2u, type2.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(4u, type2.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(6u, type2.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(8u, type2.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(2u, type1.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(4u, type1.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(6u, type1.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(8u, type1.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(2u, type3.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(4u, type3.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(6u, type3.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(8u, type3.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(2u, type4.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(4u, type4.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(6u, type4.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(8u, type4.int4, L"Struct does not contain same value", LINE_INFO());
-				}
-
-				if (i == 3) {
-					Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType3, L"Wrong enum response", LINE_INFO());
-
-					Assert::AreEqual(3u, type3.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(6u, type3.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(9u, type3.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(12u, type3.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(3u, type1.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(6u, type1.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(9u, type1.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(12u, type1.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(3u, type2.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(6u, type2.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(9u, type2.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(12u, type2.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(3u, type4.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(6u, type4.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(9u, type4.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(12u, type4.int4, L"Struct does not contain same value", LINE_INFO());
-				}
-
-				if (i == 4) {
-					Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType4, L"Wrong enum response", LINE_INFO());
-
-					Assert::AreEqual(4u, type4.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(8u, type4.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(12u, type4.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(16u, type4.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(4u, type1.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(8u, type1.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(12u, type1.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(16u, type1.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(4u, type2.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(8u, type2.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(12u, type2.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(16u, type2.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(4u, type3.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(8u, type3.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(12u, type3.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(16u, type3.int4, L"Struct does not contain same value", LINE_INFO());
-				}
+			auto startStruct = std::chrono::system_clock::now();
+			
+			for (int i = 0; i < n; i++) {
+				sOSC.loop(true);
 			}
 
-		}
+			auto endStruct = std::chrono::system_clock::now();
 
-		TEST_METHOD(OSCStagedStructs_8bit) {
+			int sbufferSizePost = sOSC.bufferMessage.bufferLength;
 
-			auto type1 = DataType1_8bit();
+			Assert::AreEqual(sbufferSizePre, sbufferSizePost, L"Buffer message buffers not equal after n loops", LINE_INFO());
 
-			auto structCons = OSCDataConsumer_8bit(4);
 
-			structCons.addEnumToStructMapping<DataType1_8bit>(DataTypes::DataType1, &type1);
+			std::chrono::duration<double> diffStruct = endStruct - startStruct;
 
-			auto message = OSC::Message();
+			auto valueStruct = diffStruct.count();
 
-			for (int i = 1; i <= 4; ++i) {
-				message.empty();
-				message.reserveAtLeast(5);
-				message.addInt((i * 1) - 1);
-				message.addInt(i * 1);
-				message.addInt(i * 2);
-				message.addInt(i * 3);
-				message.addInt(i * 4);
-
-				structCons.callbackMessage(&message);
-
-				if (i == 1) {
-					Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType1, L"Wrong enum response", LINE_INFO());
-
-					Assert::AreEqual((uint8_t)1u, type1.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual((uint8_t)2u, type1.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual((uint8_t)3u, type1.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual((uint8_t)4u, type1.int4, L"Struct does not contain same value", LINE_INFO());
-				}
-
-				if (i == 2) {
-					Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType2, L"Wrong enum response", LINE_INFO());
-
-					Assert::AreNotEqual((uint8_t)2u, type1.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual((uint8_t)4u, type1.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual((uint8_t)6u, type1.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual((uint8_t)8u, type1.int4, L"Struct does not contain same value", LINE_INFO());
-				}
-
-				if (i == 3) {
-					Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType3, L"Wrong enum response", LINE_INFO());
-
-					Assert::AreNotEqual((uint8_t)3u, type1.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual((uint8_t)6u, type1.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual((uint8_t)9u, type1.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual((uint8_t)12u, type1.int4, L"Struct does not contain same value", LINE_INFO());
-				}
-
-				if (i == 4) {
-					Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType4, L"Wrong enum response", LINE_INFO());
-
-					Assert::AreNotEqual((uint8_t)4u, type1.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual((uint8_t)8u, type1.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual((uint8_t)12u, type1.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual((uint8_t)16u, type1.int4, L"Struct does not contain same value", LINE_INFO());
-				}
-			}
-
-		}
-
-		TEST_METHOD(OSCStagedStructsNoReservation) {
-
-			auto type1 = DataType1();
-			auto type2 = DataType2();
-			auto type3 = DataType3();
-			auto type4 = DataType4();
-
-			auto structCons = OSCDataConsumer(0);
-
-			structCons.addEnumToStructMapping<DataType1>(DataTypes::DataType1, &type1);
-			structCons.addEnumToStructMapping<DataType2>(DataTypes::DataType2, &type2);
-			structCons.addEnumToStructMapping<DataType3>(DataTypes::DataType3, &type3);
-			structCons.addEnumToStructMapping<DataType4>(DataTypes::DataType4, &type4);
-
-			auto message = OSC::Message();
-
-			for (int i = 1; i <= 4; ++i) {
-				message.empty();
-				message.reserveAtLeast(5);
-				message.addInt((i * 1) - 1);
-				message.addInt(i * 1);
-				message.addInt(i * 2);
-				message.addInt(i * 3);
-				message.addInt(i * 4);
-
-				structCons.callbackMessage(&message);
-
-				if (i == 1) {
-					Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType1, L"Wrong enum response", LINE_INFO());
-
-					Assert::AreEqual(1u, type1.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(2u, type1.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(3u, type1.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(4u, type1.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(1u, type2.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(2u, type2.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(3u, type2.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(4u, type2.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(1u, type3.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(2u, type3.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(3u, type3.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(4u, type3.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(1u, type4.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(2u, type4.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(3u, type4.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(4u, type4.int4, L"Struct does not contain same value", LINE_INFO());
-				}
-
-				if (i == 2) {
-					Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType2, L"Wrong enum response", LINE_INFO());
-
-					Assert::AreEqual(2u, type2.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(4u, type2.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(6u, type2.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(8u, type2.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(2u, type1.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(4u, type1.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(6u, type1.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(8u, type1.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(2u, type3.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(4u, type3.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(6u, type3.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(8u, type3.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(2u, type4.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(4u, type4.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(6u, type4.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(8u, type4.int4, L"Struct does not contain same value", LINE_INFO());
-				}
-
-				if (i == 3) {
-					Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType3, L"Wrong enum response", LINE_INFO());
-
-					Assert::AreEqual(3u, type3.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(6u, type3.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(9u, type3.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(12u, type3.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(3u, type1.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(6u, type1.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(9u, type1.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(12u, type1.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(3u, type2.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(6u, type2.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(9u, type2.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(12u, type2.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(3u, type4.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(6u, type4.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(9u, type4.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(12u, type4.int4, L"Struct does not contain same value", LINE_INFO());
-				}
-
-				if (i == 4) {
-					Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType4, L"Wrong enum response", LINE_INFO());
-
-					Assert::AreEqual(4u, type4.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(8u, type4.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(12u, type4.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreEqual(16u, type4.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(4u, type1.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(8u, type1.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(12u, type1.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(16u, type1.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(4u, type2.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(8u, type2.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(12u, type2.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(16u, type2.int4, L"Struct does not contain same value", LINE_INFO());
-
-					Assert::AreNotEqual(4u, type3.int1, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(8u, type3.int2, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(12u, type3.int3, L"Struct does not contain same value", LINE_INFO());
-					Assert::AreNotEqual(16u, type3.int4, L"Struct does not contain same value", LINE_INFO());
-				}
-			}
-
-		}
-
-		TEST_METHOD(OSCStagedShortStructs) {
-
-			auto shortStruct = ShortStruct();
-
-			shortStruct.int1 = 255;
-
-			auto structCons = OSCDataConsumer(10);
-
-			structCons.addEnumToStructMapping<ShortStruct>(DataTypes::ShortStruct, &shortStruct);
-
-			auto message = OSC::Message();
-			message.empty();
-			message.reserveAtLeast(5);
-			message.addInt(4);
-			message.addInt(1);
-			message.addInt(2);
-			message.addInt(3);
-			message.addInt(4);
-
-			structCons.callbackMessage(&message);
-
-			Assert::IsTrue(structCons.calledbackEnum == DataTypes::ShortStruct, L"Wrong enum response", LINE_INFO());
-			Assert::AreEqual(1u, shortStruct.int1, L"Struct does not contain same value", LINE_INFO());
-		}
-
-		TEST_METHOD(OSCCorrectStagedShortStructs) {
-
-			auto shortStruct = ShortStruct();
-
-			shortStruct.int1 = 255;
-
-			auto structCons = OSCDataConsumer(10);
-
-			structCons.addEnumToStructMapping<ShortStruct>(DataTypes::DataType1, &shortStruct);
-			structCons.addEnumToStructMapping<ShortStruct>(DataTypes::ShortStruct, &shortStruct);
-			structCons.addEnumToStructMapping<ShortStruct>(DataTypes::DataType2, &shortStruct);
-			structCons.addEnumToStructMapping<ShortStruct>(DataTypes::DataType4, &shortStruct);
-
-			auto message = OSC::Message();
-			message.empty();
-			message.reserveAtLeast(5);
-			message.addInt(4);
-			message.addInt(1);
-			message.addInt(2);
-			message.addInt(3);
-			message.addInt(4);
-
-			structCons.callbackMessage(&message);
-
-			Assert::IsTrue(structCons.calledbackEnum == DataTypes::ShortStruct, L"Wrong enum response", LINE_INFO());
-			Assert::IsTrue(structCons.callbackCallCount == 1, L"Too many callbacks", LINE_INFO());
-			Assert::AreEqual(1u, shortStruct.int1, L"Struct does not contain same value", LINE_INFO());
-		}
-
-		TEST_METHOD(OSCStagedLongStructs) {
-
-			auto longStruct = LongStruct();
-
-			longStruct.int1 = 255;
-			longStruct.int2 = 255;
-			longStruct.int3 = 255;
-			longStruct.int4 = 255;
-			longStruct.int5 = 255;
-			longStruct.int6 = 255;
-			longStruct.int7 = 255;
-			longStruct.int8 = 255;
-
-			auto structCons = OSCDataConsumer(10);
-
-			structCons.addEnumToStructMapping<LongStruct>(DataTypes::LongStruct, &longStruct);
-
-			auto message = OSC::Message();
-			message.empty();
-			message.reserveAtLeast(5);
-			message.addInt(5);
-			message.addInt(1);
-			message.addInt(2);
-			message.addInt(3);
-			message.addInt(4);
-
-			structCons.callbackMessage(&message);
-
-			Assert::IsTrue(structCons.calledbackEnum == DataTypes::LongStruct, L"Wrong enum response", LINE_INFO());
-			Assert::AreEqual(1u, longStruct.int1, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(2u, longStruct.int2, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(3u, longStruct.int3, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(4u, longStruct.int4, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(0u, longStruct.int5, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(0u, longStruct.int6, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(0u, longStruct.int7, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(0u, longStruct.int8, L"Struct does not contain same value", LINE_INFO());
-		}
-
-		TEST_METHOD(OSCSendAsIntStruct) {
-			auto message = OSC::Message();
-
-			message.setAddress("/Struct/Message");
-
-			auto data = Data();
-			data.int1 = 32;
-			data.int2 = 64;
-			data.int3 = 128;
-			data.int4 = 256;
-			data.int5 = 512;
-
-			OSC::DataType types[5]
-			{
-				OSC::DataType::Integer, OSC::DataType::Integer, OSC::DataType::Integer, OSC::DataType::Integer, OSC::DataType::Integer
-			};
-
-			message.set<Data>(0, &data, types);
-
-			Assert::AreEqual(32u, message.getInt(0), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(64u, message.getInt(1), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(128u, message.getInt(2), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(256u, message.getInt(3), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(512u, message.getInt(4), L"Struct does not contain same value", LINE_INFO());
-
-			Assert::IsTrue(message.getDataType(0) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(1) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(2) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(3) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(4) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-		}
-
-		TEST_METHOD(OSCSendAsFloatStruct) {
-			auto message = OSC::Message();
-
-			message.setAddress("/Struct/Message");
-
-			auto data = Data2();
-			data.int1 = 32;
-			data.int2 = 64;
-			data.float1 = 31124.12351f;
-			data.float2 = 0.000198178f;
-
-			OSC::DataType types[4]
-			{
-				OSC::DataType::Integer, OSC::DataType::Float, OSC::DataType::Integer, OSC::DataType::Float
-			};
-
-			message.set<Data2>(0, &data, types);
-
-			Assert::AreEqual(32u, message.getInt(0), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(31124.12351f, message.getFloat(1), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(64u, message.getInt(2), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(0.000198178f, message.getFloat(3), L"Struct does not contain same value", LINE_INFO());
-
-			Assert::IsTrue(message.getDataType(0) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(1) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(2) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(3) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-		}
-
-		TEST_METHOD(OSCSendAsStructAutoDetect) {
-			auto message = OSC::Message();
-
-			message.setAddress("/Struct/Message");
-
-			auto data = Data2();
-			data.int1 = 32;
-			data.int2 = 64;
-			data.float1 = 31124.12351f;
-			data.float2 = 0.000198178f;
-
-			message.set<Data2>(0, &data);
-
-			Assert::AreEqual(32u, message.getInt(0), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(31124.12351f, message.getFloat(1), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(64u, message.getInt(2), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(0.000198178f, message.getFloat(3), L"Struct does not contain same value", LINE_INFO());
-
-			Assert::IsTrue(message.getDataType(0) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(1) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(2) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(3) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-		}
-
-		TEST_METHOD(OSCSendAsStructAutoDetectBig) {
-			auto message = OSC::Message();
-			auto print = Print();
-
-			message.setAddress("/Struct/Message");
-
-			MessageData messageData;
-			messageData.int0 = 0;
-			messageData.int1 = 1;
-			messageData.int2 = 2;
-			messageData.int3 = 3;
-			messageData.int4 = 4;
-			messageData.int5 = 5;
-			messageData.int6 = 6;
-			messageData.int7 = 7;
-			messageData.int8 = 8;
-			messageData.int9 = 9;
-			messageData.float10 = 10.10f;
-			messageData.float11 = 11.11f;
-			messageData.float12 = 12.12f;
-			messageData.float13 = 13.13f;
-			messageData.float14 = 14.14f;
-			messageData.float15 = 15.15f;
-			messageData.float16 = 16.16f;
-			messageData.float17 = 17.17f;
-			messageData.float18 = 18.18f;
-			messageData.float19 = 19.19f;
-
-			message.set<MessageData>(0, &messageData);
-
-			message.send(&print);
-
-			Assert::AreEqual(0u, message.getInt(0), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(1u, message.getInt(1), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(2u, message.getInt(2), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(3u, message.getInt(3), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(4u, message.getInt(4), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(5u, message.getInt(5), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(6u, message.getInt(6), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(7u, message.getInt(7), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(8u, message.getInt(8), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(9u, message.getInt(9), L"Struct does not contain same value", LINE_INFO());
-
-			Assert::IsTrue(message.getDataType(0) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(1) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(2) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(3) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(4) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(5) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(6) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(7) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(8) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(9) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-
-			Assert::AreEqual(10.10f, message.getFloat(10), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(11.11f, message.getFloat(11), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(12.12f, message.getFloat(12), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(13.13f, message.getFloat(13), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(14.14f, message.getFloat(14), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(15.15f, message.getFloat(15), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(16.16f, message.getFloat(16), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(17.17f, message.getFloat(17), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(18.18f, message.getFloat(18), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(19.19f, message.getFloat(19), L"Struct does not contain same value", LINE_INFO());
-
-			Assert::IsTrue(message.getDataType(10) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(11) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(12) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(13) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(14) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(15) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(16) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(17) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(18) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(19) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-		}
-
-		TEST_METHOD(OSCSendAsStructAutoDetectBig2) {
-			auto message = OSC::Message();
-			auto print = Print();
-
-			message.setAddress("/Struct/Message");
-
-			MessageData messageData;
-			messageData.int0 = 0;
-			messageData.int1 = 1;
-			messageData.int2 = 2;
-			messageData.int3 = 3;
-			messageData.int4 = 4;
-			messageData.int5 = 5;
-			messageData.int6 = 6;
-			messageData.int7 = 7;
-			messageData.int8 = 8;
-			messageData.int9 = 9;
-			messageData.float10 = 10.10f;
-			messageData.float11 = 11.11f;
-			messageData.float12 = 12.12f;
-			messageData.float13 = 13.13f;
-			messageData.float14 = 14.14f;
-			messageData.float15 = 15.15f;
-			messageData.float16 = 16.16f;
-			messageData.float17 = 17.17f;
-			messageData.float18 = 18.18f;
-			messageData.float19 = 19.19f;
-
-			message.addInt(0);
-			message.add<MessageData>(&messageData);
-			message.addInt(12345);
-
-			message.send(&print);
-
-			Assert::AreEqual(0u, message.getInt(0), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(0u, message.getInt(1), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(1u, message.getInt(2), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(2u, message.getInt(3), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(3u, message.getInt(4), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(4u, message.getInt(5), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(5u, message.getInt(6), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(6u, message.getInt(7), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(7u, message.getInt(8), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(8u, message.getInt(9), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(9u, message.getInt(10), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(12345u, message.getInt(21), L"Struct does not contain same value", LINE_INFO());
-
-			Assert::IsTrue(message.getDataType(0) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(1) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(2) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(3) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(4) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(5) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(6) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(7) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(8) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(9) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(10) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(21) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
-
-			Assert::AreEqual(10.10f, message.getFloat(11), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(11.11f, message.getFloat(12), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(12.12f, message.getFloat(13), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(13.13f, message.getFloat(14), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(14.14f, message.getFloat(15), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(15.15f, message.getFloat(16), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(16.16f, message.getFloat(17), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(17.17f, message.getFloat(18), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(18.18f, message.getFloat(19), L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(19.19f, message.getFloat(20), L"Struct does not contain same value", LINE_INFO());
-
-			Assert::IsTrue(message.getDataType(11) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(12) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(13) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(14) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(15) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(16) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(17) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(18) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(19) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
-			Assert::IsTrue(message.getDataType(20) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+			Assert::IsTrue(valueStruct < valueRegular, L"Better method faster", LINE_INFO());
 		}
 
 
-		TEST_METHOD(OSCReadMessageStruct) {
-			auto message = OSC::StructMessage<Data, uint32_t>();
+		//// STRUCT Message Consumer
+		//TEST_METHOD(OSCReadAsStruct) {
+		//	auto message = OSC::Message();
 
-			auto structCons = OSCStructDataConsumer();
+		//	auto structCons = OSCDataConsumer(5);
 
-			message.setAddress(structCons.pattern());
-			message.messageStruct.int1 = 1;
-			message.messageStruct.int2 = 2;
-			message.messageStruct.int3 = 3;
-			message.messageStruct.int4 = 4;
-			message.messageStruct.int5 = 5;
+		//	message.setAddress("/Some/Address");
+		//	message.empty();
+		//	message.addInt(1);
+		//	message.addInt(2);
+		//	message.addInt(3);
+		//	message.addInt(4);
+		//	message.addInt(5);
 
-			auto OSC = OSC::Arduino<OSC::StructMessage<Data, uint32_t>>(1, 0);
-			auto Udp = UDP();
+		//	auto data = Data();
 
-			OSC.bindUDP(&Udp, 1, 1);
-			OSC.addConsumer(&structCons);
+		//	structCons.readToStruct(&message, (unsigned char*)&data, sizeof(Data));
 
-			message.send(&Udp);
+		//	Assert::AreEqual(1u, data.int1, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(2u, data.int2, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(3u, data.int3, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(4u, data.int4, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(5u, data.int5, L"Struct does not contain same value", LINE_INFO());
+		//}
 
-			OSC.loop(false);
+		//TEST_METHOD(OSCReadAsStruct2) {
+		//	auto message = OSC::Message();
 
-			Assert::AreEqual(1u, structCons.structMessage->messageStruct.int1, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(2u, structCons.structMessage->messageStruct.int2, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(3u, structCons.structMessage->messageStruct.int3, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(4u, structCons.structMessage->messageStruct.int4, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual(5u, structCons.structMessage->messageStruct.int5, L"Struct does not contain same value", LINE_INFO());
-		}
+		//	auto structCons = OSCDataConsumer(5);
 
-		TEST_METHOD(OSCReadEdtMessageStruct) {
-			auto message = OSC::StructMessage<OSC::EdtMessage, uint8_t>();
+		//	message.setAddress("/Some/Address");
+		//	message.empty();
+		//	message.addInt(1);
+		//	message.addFloat(2.345f);
+		//	message.addInt(3);
+		//	message.addFloat(441910.191f);
 
-			auto structCons = OSCEdtMessageConsumer();
+		//	auto data = Data2();
 
-			message.setAddress(structCons.pattern());
-			message.messageStruct.command = OSC::ColorCommands::SinglePulse;
-			message.messageStruct.commands.singleColor.duration = 1;
-			message.messageStruct.commands.singleColor.end = 2;
-			message.messageStruct.commands.singleColor.hue = 3;
-			message.messageStruct.commands.singleColor.saturation = 4;
-			message.messageStruct.commands.singleColor.start = 5;
-			message.messageStruct.commands.singleColor.value = 6;
+		//	structCons.readToStruct(&message, (unsigned char*)&data, sizeof(Data2));
 
-			auto OSC = OSC::Arduino<OSC::StructMessage<OSC::EdtMessage, uint8_t>>(1, 0);
-			auto Udp = UDP();
+		//	Assert::AreEqual(1u, data.int1, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(2.345f, data.float1, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(3u, data.int2, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(441910.191f, data.float2, L"Struct does not contain same value", LINE_INFO());
+		//}
 
-			OSC.bindUDP(&Udp, 1, 1);
-			OSC.addConsumer(&structCons);
+		//TEST_METHOD(OSCStagedStructs) {
 
-			message.send(&Udp);
+		//	auto type1 = DataType1();
+		//	auto type2 = DataType2();
+		//	auto type3 = DataType3();
+		//	auto type4 = DataType4();
 
-			OSC.loop(false);
+		//	auto structCons = OSCDataConsumer(4);
 
-			Assert::AreEqual((int)OSC::ColorCommands::SinglePulse, (int)structCons.structMessage->messageStruct.command, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual((uint8_t)1, structCons.structMessage->messageStruct.commands.singleColor.duration, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual((uint8_t)2, structCons.structMessage->messageStruct.commands.singleColor.end, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual((uint8_t)3, structCons.structMessage->messageStruct.commands.singleColor.hue, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual((uint8_t)4, structCons.structMessage->messageStruct.commands.singleColor.saturation, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual((uint8_t)5, structCons.structMessage->messageStruct.commands.singleColor.start, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual((uint8_t)6, structCons.structMessage->messageStruct.commands.singleColor.value, L"Struct does not contain same value", LINE_INFO());
-		}
+		//	structCons.addEnumToStructMapping<DataType1>(DataTypes::DataType1, &type1);
+		//	structCons.addEnumToStructMapping<DataType2>(DataTypes::DataType2, &type2);
+		//	structCons.addEnumToStructMapping<DataType3>(DataTypes::DataType3, &type3);
+		//	structCons.addEnumToStructMapping<DataType4>(DataTypes::DataType4, &type4);
 
-		TEST_METHOD(OSCReadEdtMessageFromRawStruct) {
-			auto message = OSC::StructMessage<OSC::EdtMessage, uint8_t>();
-			auto structCons = OSCEdtMessageConsumer();
-			auto print = Print();
+		//	auto message = OSC::Message();
 
-			std::string testString = "/Some/Address___,iiiiiii_______\x1___\x2___\x3___\x4___\x5___\x6___\x7";
-			int length = testString.length();
+		//	for (int i = 1; i <= 4; ++i) {
+		//		message.empty();
+		//		message.reserveAtLeast(5);
+		//		message.addInt((i * 1) - 1);
+		//		message.addInt(i * 1);
+		//		message.addInt(i * 2);
+		//		message.addInt(i * 3);
+		//		message.addInt(i * 4);
 
-			print.write(testString.c_str(), length);
+		//		structCons.callbackMessage(&message);
 
-			message.setAddress("/Some/Address");
-			message.reserveBuffer(length);
-			memcpy(message.processBuffer, print.reversedBuffer, length);
+		//		if (i == 1) {
+		//			Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType1, L"Wrong enum response", LINE_INFO());
 
-			message.process(false);
+		//			Assert::AreEqual(1u, type1.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(2u, type1.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(3u, type1.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(4u, type1.int4, L"Struct does not contain same value", LINE_INFO());
 
-			auto OSC = OSC::Arduino<OSC::StructMessage<OSC::EdtMessage, uint8_t>>(1, 0);
-			auto Udp = UDP();
+		//			Assert::AreNotEqual(1u, type2.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(2u, type2.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(3u, type2.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(4u, type2.int4, L"Struct does not contain same value", LINE_INFO());
 
-			OSC.bindUDP(&Udp, 1, 1);
-			OSC.addConsumer(&structCons);
+		//			Assert::AreNotEqual(1u, type3.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(2u, type3.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(3u, type3.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(4u, type3.int4, L"Struct does not contain same value", LINE_INFO());
 
-			message.send(&Udp, false);
+		//			Assert::AreNotEqual(1u, type4.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(2u, type4.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(3u, type4.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(4u, type4.int4, L"Struct does not contain same value", LINE_INFO());
+		//		}
 
-			OSC.loop(false);
+		//		if (i == 2) {
+		//			Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType2, L"Wrong enum response", LINE_INFO());
 
-			Assert::AreEqual((int)OSC::ColorCommands::SinglePulse, (int)structCons.structMessage->messageStruct.command, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual((uint8_t)7, structCons.structMessage->messageStruct.commands.singleColor.duration, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual((uint8_t)3, structCons.structMessage->messageStruct.commands.singleColor.end, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual((uint8_t)4, structCons.structMessage->messageStruct.commands.singleColor.hue, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual((uint8_t)5, structCons.structMessage->messageStruct.commands.singleColor.saturation, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual((uint8_t)2, structCons.structMessage->messageStruct.commands.singleColor.start, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual((uint8_t)6, structCons.structMessage->messageStruct.commands.singleColor.value, L"Struct does not contain same value", LINE_INFO());
-		}
+		//			Assert::AreEqual(2u, type2.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(4u, type2.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(6u, type2.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(8u, type2.int4, L"Struct does not contain same value", LINE_INFO());
 
-		TEST_METHOD(OSCReadEdtMessageFromRaw2Struct) {
-			auto message = OSC::StructMessage<OSC::EdtMessage, uint8_t>();
-			auto structCons = OSCEdtMessageConsumer();
-			auto print = Print();
+		//			Assert::AreNotEqual(2u, type1.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(4u, type1.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(6u, type1.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(8u, type1.int4, L"Struct does not contain same value", LINE_INFO());
 
-			std::string testString = "/Some/Address___,iii_______\x6___\x2___\x3";
-			int length = testString.length();
+		//			Assert::AreNotEqual(2u, type3.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(4u, type3.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(6u, type3.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(8u, type3.int4, L"Struct does not contain same value", LINE_INFO());
 
-			print.write(testString.c_str(), length);
+		//			Assert::AreNotEqual(2u, type4.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(4u, type4.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(6u, type4.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(8u, type4.int4, L"Struct does not contain same value", LINE_INFO());
+		//		}
 
-			message.setAddress("/Some/Address");
-			message.reserveBuffer(length);
-			memcpy(message.processBuffer, print.reversedBuffer, length);
+		//		if (i == 3) {
+		//			Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType3, L"Wrong enum response", LINE_INFO());
 
-			message.process(false);
+		//			Assert::AreEqual(3u, type3.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(6u, type3.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(9u, type3.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(12u, type3.int4, L"Struct does not contain same value", LINE_INFO());
 
-			auto OSC = OSC::Arduino<OSC::StructMessage<OSC::EdtMessage, uint8_t>>(1, 0);
-			auto Udp = UDP();
+		//			Assert::AreNotEqual(3u, type1.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(6u, type1.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(9u, type1.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(12u, type1.int4, L"Struct does not contain same value", LINE_INFO());
 
-			OSC.bindUDP(&Udp, 1, 1);
-			OSC.addConsumer(&structCons);
+		//			Assert::AreNotEqual(3u, type2.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(6u, type2.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(9u, type2.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(12u, type2.int4, L"Struct does not contain same value", LINE_INFO());
 
-			message.send(&Udp, false);
+		//			Assert::AreNotEqual(3u, type4.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(6u, type4.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(9u, type4.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(12u, type4.int4, L"Struct does not contain same value", LINE_INFO());
+		//		}
 
-			OSC.loop(false);
+		//		if (i == 4) {
+		//			Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType4, L"Wrong enum response", LINE_INFO());
 
-			Assert::AreEqual((int)OSC::ColorCommands::Strobo, (int)structCons.structMessage->messageStruct.command, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual((uint8_t)2, structCons.structMessage->messageStruct.commands.strobo.hue, L"Struct does not contain same value", LINE_INFO());
-			Assert::AreEqual((uint8_t)3, structCons.structMessage->messageStruct.commands.strobo.intensity, L"Struct does not contain same value", LINE_INFO());
-		}
+		//			Assert::AreEqual(4u, type4.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(8u, type4.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(12u, type4.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(16u, type4.int4, L"Struct does not contain same value", LINE_INFO());
+
+		//			Assert::AreNotEqual(4u, type1.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(8u, type1.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(12u, type1.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(16u, type1.int4, L"Struct does not contain same value", LINE_INFO());
+
+		//			Assert::AreNotEqual(4u, type2.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(8u, type2.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(12u, type2.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(16u, type2.int4, L"Struct does not contain same value", LINE_INFO());
+
+		//			Assert::AreNotEqual(4u, type3.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(8u, type3.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(12u, type3.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(16u, type3.int4, L"Struct does not contain same value", LINE_INFO());
+		//		}
+		//	}
+
+		//}
+
+		//TEST_METHOD(OSCStagedStructs_8bit) {
+
+		//	auto type1 = DataType1_8bit();
+
+		//	auto structCons = OSCDataConsumer_8bit(4);
+
+		//	structCons.addEnumToStructMapping<DataType1_8bit>(DataTypes::DataType1, &type1);
+
+		//	auto message = OSC::Message();
+
+		//	for (int i = 1; i <= 4; ++i) {
+		//		message.empty();
+		//		message.reserveAtLeast(5);
+		//		message.addInt((i * 1) - 1);
+		//		message.addInt(i * 1);
+		//		message.addInt(i * 2);
+		//		message.addInt(i * 3);
+		//		message.addInt(i * 4);
+
+		//		structCons.callbackMessage(&message);
+
+		//		if (i == 1) {
+		//			Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType1, L"Wrong enum response", LINE_INFO());
+
+		//			Assert::AreEqual((uint8_t)1u, type1.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual((uint8_t)2u, type1.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual((uint8_t)3u, type1.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual((uint8_t)4u, type1.int4, L"Struct does not contain same value", LINE_INFO());
+		//		}
+
+		//		if (i == 2) {
+		//			Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType2, L"Wrong enum response", LINE_INFO());
+
+		//			Assert::AreNotEqual((uint8_t)2u, type1.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual((uint8_t)4u, type1.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual((uint8_t)6u, type1.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual((uint8_t)8u, type1.int4, L"Struct does not contain same value", LINE_INFO());
+		//		}
+
+		//		if (i == 3) {
+		//			Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType3, L"Wrong enum response", LINE_INFO());
+
+		//			Assert::AreNotEqual((uint8_t)3u, type1.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual((uint8_t)6u, type1.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual((uint8_t)9u, type1.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual((uint8_t)12u, type1.int4, L"Struct does not contain same value", LINE_INFO());
+		//		}
+
+		//		if (i == 4) {
+		//			Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType4, L"Wrong enum response", LINE_INFO());
+
+		//			Assert::AreNotEqual((uint8_t)4u, type1.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual((uint8_t)8u, type1.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual((uint8_t)12u, type1.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual((uint8_t)16u, type1.int4, L"Struct does not contain same value", LINE_INFO());
+		//		}
+		//	}
+
+		//}
+
+		//TEST_METHOD(OSCStagedStructsNoReservation) {
+
+		//	auto type1 = DataType1();
+		//	auto type2 = DataType2();
+		//	auto type3 = DataType3();
+		//	auto type4 = DataType4();
+
+		//	auto structCons = OSCDataConsumer(0);
+
+		//	structCons.addEnumToStructMapping<DataType1>(DataTypes::DataType1, &type1);
+		//	structCons.addEnumToStructMapping<DataType2>(DataTypes::DataType2, &type2);
+		//	structCons.addEnumToStructMapping<DataType3>(DataTypes::DataType3, &type3);
+		//	structCons.addEnumToStructMapping<DataType4>(DataTypes::DataType4, &type4);
+
+		//	auto message = OSC::Message();
+
+		//	for (int i = 1; i <= 4; ++i) {
+		//		message.empty();
+		//		message.reserveAtLeast(5);
+		//		message.addInt((i * 1) - 1);
+		//		message.addInt(i * 1);
+		//		message.addInt(i * 2);
+		//		message.addInt(i * 3);
+		//		message.addInt(i * 4);
+
+		//		structCons.callbackMessage(&message);
+
+		//		if (i == 1) {
+		//			Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType1, L"Wrong enum response", LINE_INFO());
+
+		//			Assert::AreEqual(1u, type1.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(2u, type1.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(3u, type1.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(4u, type1.int4, L"Struct does not contain same value", LINE_INFO());
+
+		//			Assert::AreNotEqual(1u, type2.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(2u, type2.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(3u, type2.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(4u, type2.int4, L"Struct does not contain same value", LINE_INFO());
+
+		//			Assert::AreNotEqual(1u, type3.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(2u, type3.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(3u, type3.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(4u, type3.int4, L"Struct does not contain same value", LINE_INFO());
+
+		//			Assert::AreNotEqual(1u, type4.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(2u, type4.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(3u, type4.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(4u, type4.int4, L"Struct does not contain same value", LINE_INFO());
+		//		}
+
+		//		if (i == 2) {
+		//			Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType2, L"Wrong enum response", LINE_INFO());
+
+		//			Assert::AreEqual(2u, type2.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(4u, type2.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(6u, type2.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(8u, type2.int4, L"Struct does not contain same value", LINE_INFO());
+
+		//			Assert::AreNotEqual(2u, type1.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(4u, type1.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(6u, type1.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(8u, type1.int4, L"Struct does not contain same value", LINE_INFO());
+
+		//			Assert::AreNotEqual(2u, type3.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(4u, type3.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(6u, type3.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(8u, type3.int4, L"Struct does not contain same value", LINE_INFO());
+
+		//			Assert::AreNotEqual(2u, type4.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(4u, type4.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(6u, type4.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(8u, type4.int4, L"Struct does not contain same value", LINE_INFO());
+		//		}
+
+		//		if (i == 3) {
+		//			Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType3, L"Wrong enum response", LINE_INFO());
+
+		//			Assert::AreEqual(3u, type3.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(6u, type3.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(9u, type3.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(12u, type3.int4, L"Struct does not contain same value", LINE_INFO());
+
+		//			Assert::AreNotEqual(3u, type1.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(6u, type1.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(9u, type1.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(12u, type1.int4, L"Struct does not contain same value", LINE_INFO());
+
+		//			Assert::AreNotEqual(3u, type2.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(6u, type2.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(9u, type2.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(12u, type2.int4, L"Struct does not contain same value", LINE_INFO());
+
+		//			Assert::AreNotEqual(3u, type4.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(6u, type4.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(9u, type4.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(12u, type4.int4, L"Struct does not contain same value", LINE_INFO());
+		//		}
+
+		//		if (i == 4) {
+		//			Assert::IsTrue(structCons.calledbackEnum == DataTypes::DataType4, L"Wrong enum response", LINE_INFO());
+
+		//			Assert::AreEqual(4u, type4.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(8u, type4.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(12u, type4.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreEqual(16u, type4.int4, L"Struct does not contain same value", LINE_INFO());
+
+		//			Assert::AreNotEqual(4u, type1.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(8u, type1.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(12u, type1.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(16u, type1.int4, L"Struct does not contain same value", LINE_INFO());
+
+		//			Assert::AreNotEqual(4u, type2.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(8u, type2.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(12u, type2.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(16u, type2.int4, L"Struct does not contain same value", LINE_INFO());
+
+		//			Assert::AreNotEqual(4u, type3.int1, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(8u, type3.int2, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(12u, type3.int3, L"Struct does not contain same value", LINE_INFO());
+		//			Assert::AreNotEqual(16u, type3.int4, L"Struct does not contain same value", LINE_INFO());
+		//		}
+		//	}
+
+		//}
+
+		//TEST_METHOD(OSCStagedShortStructs) {
+
+		//	auto shortStruct = ShortStruct();
+
+		//	shortStruct.int1 = 255;
+
+		//	auto structCons = OSCDataConsumer(10);
+
+		//	structCons.addEnumToStructMapping<ShortStruct>(DataTypes::ShortStruct, &shortStruct);
+
+		//	auto message = OSC::Message();
+		//	message.empty();
+		//	message.reserveAtLeast(5);
+		//	message.addInt(4);
+		//	message.addInt(1);
+		//	message.addInt(2);
+		//	message.addInt(3);
+		//	message.addInt(4);
+
+		//	structCons.callbackMessage(&message);
+
+		//	Assert::IsTrue(structCons.calledbackEnum == DataTypes::ShortStruct, L"Wrong enum response", LINE_INFO());
+		//	Assert::AreEqual(1u, shortStruct.int1, L"Struct does not contain same value", LINE_INFO());
+		//}
+
+		//TEST_METHOD(OSCCorrectStagedShortStructs) {
+
+		//	auto shortStruct = ShortStruct();
+
+		//	shortStruct.int1 = 255;
+
+		//	auto structCons = OSCDataConsumer(10);
+
+		//	structCons.addEnumToStructMapping<ShortStruct>(DataTypes::DataType1, &shortStruct);
+		//	structCons.addEnumToStructMapping<ShortStruct>(DataTypes::ShortStruct, &shortStruct);
+		//	structCons.addEnumToStructMapping<ShortStruct>(DataTypes::DataType2, &shortStruct);
+		//	structCons.addEnumToStructMapping<ShortStruct>(DataTypes::DataType4, &shortStruct);
+
+		//	auto message = OSC::Message();
+		//	message.empty();
+		//	message.reserveAtLeast(5);
+		//	message.addInt(4);
+		//	message.addInt(1);
+		//	message.addInt(2);
+		//	message.addInt(3);
+		//	message.addInt(4);
+
+		//	structCons.callbackMessage(&message);
+
+		//	Assert::IsTrue(structCons.calledbackEnum == DataTypes::ShortStruct, L"Wrong enum response", LINE_INFO());
+		//	Assert::IsTrue(structCons.callbackCallCount == 1, L"Too many callbacks", LINE_INFO());
+		//	Assert::AreEqual(1u, shortStruct.int1, L"Struct does not contain same value", LINE_INFO());
+		//}
+
+		//TEST_METHOD(OSCStagedLongStructs) {
+
+		//	auto longStruct = LongStruct();
+
+		//	longStruct.int1 = 255;
+		//	longStruct.int2 = 255;
+		//	longStruct.int3 = 255;
+		//	longStruct.int4 = 255;
+		//	longStruct.int5 = 255;
+		//	longStruct.int6 = 255;
+		//	longStruct.int7 = 255;
+		//	longStruct.int8 = 255;
+
+		//	auto structCons = OSCDataConsumer(10);
+
+		//	structCons.addEnumToStructMapping<LongStruct>(DataTypes::LongStruct, &longStruct);
+
+		//	auto message = OSC::Message();
+		//	message.empty();
+		//	message.reserveAtLeast(5);
+		//	message.addInt(5);
+		//	message.addInt(1);
+		//	message.addInt(2);
+		//	message.addInt(3);
+		//	message.addInt(4);
+
+		//	structCons.callbackMessage(&message);
+
+		//	Assert::IsTrue(structCons.calledbackEnum == DataTypes::LongStruct, L"Wrong enum response", LINE_INFO());
+		//	Assert::AreEqual(1u, longStruct.int1, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(2u, longStruct.int2, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(3u, longStruct.int3, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(4u, longStruct.int4, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(0u, longStruct.int5, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(0u, longStruct.int6, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(0u, longStruct.int7, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(0u, longStruct.int8, L"Struct does not contain same value", LINE_INFO());
+		//}
+
+		//TEST_METHOD(OSCSendAsIntStruct) {
+		//	auto message = OSC::Message();
+
+		//	message.setAddress("/Struct/Message");
+
+		//	auto data = Data();
+		//	data.int1 = 32;
+		//	data.int2 = 64;
+		//	data.int3 = 128;
+		//	data.int4 = 256;
+		//	data.int5 = 512;
+
+		//	OSC::DataType types[5]
+		//	{
+		//		OSC::DataType::Integer, OSC::DataType::Integer, OSC::DataType::Integer, OSC::DataType::Integer, OSC::DataType::Integer
+		//	};
+
+		//	message.set<Data>(0, &data, types);
+
+		//	Assert::AreEqual(32u, message.getInt(0), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(64u, message.getInt(1), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(128u, message.getInt(2), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(256u, message.getInt(3), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(512u, message.getInt(4), L"Struct does not contain same value", LINE_INFO());
+
+		//	Assert::IsTrue(message.getDataType(0) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(1) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(2) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(3) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(4) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//}
+
+		//TEST_METHOD(OSCSendAsFloatStruct) {
+		//	auto message = OSC::Message();
+
+		//	message.setAddress("/Struct/Message");
+
+		//	auto data = Data2();
+		//	data.int1 = 32;
+		//	data.int2 = 64;
+		//	data.float1 = 31124.12351f;
+		//	data.float2 = 0.000198178f;
+
+		//	OSC::DataType types[4]
+		//	{
+		//		OSC::DataType::Integer, OSC::DataType::Float, OSC::DataType::Integer, OSC::DataType::Float
+		//	};
+
+		//	message.set<Data2>(0, &data, types);
+
+		//	Assert::AreEqual(32u, message.getInt(0), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(31124.12351f, message.getFloat(1), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(64u, message.getInt(2), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(0.000198178f, message.getFloat(3), L"Struct does not contain same value", LINE_INFO());
+
+		//	Assert::IsTrue(message.getDataType(0) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(1) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(2) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(3) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//}
+
+		//TEST_METHOD(OSCSendAsStructAutoDetect) {
+		//	auto message = OSC::Message();
+
+		//	message.setAddress("/Struct/Message");
+
+		//	auto data = Data2();
+		//	data.int1 = 32;
+		//	data.int2 = 64;
+		//	data.float1 = 31124.12351f;
+		//	data.float2 = 0.000198178f;
+
+		//	message.set<Data2>(0, &data);
+
+		//	Assert::AreEqual(32u, message.getInt(0), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(31124.12351f, message.getFloat(1), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(64u, message.getInt(2), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(0.000198178f, message.getFloat(3), L"Struct does not contain same value", LINE_INFO());
+
+		//	Assert::IsTrue(message.getDataType(0) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(1) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(2) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(3) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//}
+
+		//TEST_METHOD(OSCSendAsStructAutoDetectBig) {
+		//	auto message = OSC::Message();
+		//	auto print = Print();
+
+		//	message.setAddress("/Struct/Message");
+
+		//	MessageData messageData;
+		//	messageData.int0 = 0;
+		//	messageData.int1 = 1;
+		//	messageData.int2 = 2;
+		//	messageData.int3 = 3;
+		//	messageData.int4 = 4;
+		//	messageData.int5 = 5;
+		//	messageData.int6 = 6;
+		//	messageData.int7 = 7;
+		//	messageData.int8 = 8;
+		//	messageData.int9 = 9;
+		//	messageData.float10 = 10.10f;
+		//	messageData.float11 = 11.11f;
+		//	messageData.float12 = 12.12f;
+		//	messageData.float13 = 13.13f;
+		//	messageData.float14 = 14.14f;
+		//	messageData.float15 = 15.15f;
+		//	messageData.float16 = 16.16f;
+		//	messageData.float17 = 17.17f;
+		//	messageData.float18 = 18.18f;
+		//	messageData.float19 = 19.19f;
+
+		//	message.set<MessageData>(0, &messageData);
+
+		//	message.send(&print);
+
+		//	Assert::AreEqual(0u, message.getInt(0), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(1u, message.getInt(1), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(2u, message.getInt(2), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(3u, message.getInt(3), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(4u, message.getInt(4), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(5u, message.getInt(5), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(6u, message.getInt(6), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(7u, message.getInt(7), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(8u, message.getInt(8), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(9u, message.getInt(9), L"Struct does not contain same value", LINE_INFO());
+
+		//	Assert::IsTrue(message.getDataType(0) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(1) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(2) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(3) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(4) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(5) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(6) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(7) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(8) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(9) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+
+		//	Assert::AreEqual(10.10f, message.getFloat(10), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(11.11f, message.getFloat(11), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(12.12f, message.getFloat(12), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(13.13f, message.getFloat(13), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(14.14f, message.getFloat(14), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(15.15f, message.getFloat(15), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(16.16f, message.getFloat(16), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(17.17f, message.getFloat(17), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(18.18f, message.getFloat(18), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(19.19f, message.getFloat(19), L"Struct does not contain same value", LINE_INFO());
+
+		//	Assert::IsTrue(message.getDataType(10) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(11) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(12) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(13) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(14) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(15) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(16) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(17) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(18) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(19) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//}
+
+		//TEST_METHOD(OSCSendAsStructAutoDetectBig2) {
+		//	auto message = OSC::Message();
+		//	auto print = Print();
+
+		//	message.setAddress("/Struct/Message");
+
+		//	MessageData messageData;
+		//	messageData.int0 = 0;
+		//	messageData.int1 = 1;
+		//	messageData.int2 = 2;
+		//	messageData.int3 = 3;
+		//	messageData.int4 = 4;
+		//	messageData.int5 = 5;
+		//	messageData.int6 = 6;
+		//	messageData.int7 = 7;
+		//	messageData.int8 = 8;
+		//	messageData.int9 = 9;
+		//	messageData.float10 = 10.10f;
+		//	messageData.float11 = 11.11f;
+		//	messageData.float12 = 12.12f;
+		//	messageData.float13 = 13.13f;
+		//	messageData.float14 = 14.14f;
+		//	messageData.float15 = 15.15f;
+		//	messageData.float16 = 16.16f;
+		//	messageData.float17 = 17.17f;
+		//	messageData.float18 = 18.18f;
+		//	messageData.float19 = 19.19f;
+
+		//	message.addInt(0);
+		//	message.add<MessageData>(&messageData);
+		//	message.addInt(12345);
+
+		//	message.send(&print);
+
+		//	Assert::AreEqual(0u, message.getInt(0), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(0u, message.getInt(1), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(1u, message.getInt(2), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(2u, message.getInt(3), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(3u, message.getInt(4), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(4u, message.getInt(5), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(5u, message.getInt(6), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(6u, message.getInt(7), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(7u, message.getInt(8), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(8u, message.getInt(9), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(9u, message.getInt(10), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(12345u, message.getInt(21), L"Struct does not contain same value", LINE_INFO());
+
+		//	Assert::IsTrue(message.getDataType(0) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(1) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(2) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(3) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(4) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(5) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(6) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(7) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(8) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(9) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(10) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(21) == OSC::DataType::Integer, L"Datatype does not match", LINE_INFO());
+
+		//	Assert::AreEqual(10.10f, message.getFloat(11), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(11.11f, message.getFloat(12), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(12.12f, message.getFloat(13), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(13.13f, message.getFloat(14), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(14.14f, message.getFloat(15), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(15.15f, message.getFloat(16), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(16.16f, message.getFloat(17), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(17.17f, message.getFloat(18), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(18.18f, message.getFloat(19), L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(19.19f, message.getFloat(20), L"Struct does not contain same value", LINE_INFO());
+
+		//	Assert::IsTrue(message.getDataType(11) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(12) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(13) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(14) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(15) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(16) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(17) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(18) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(19) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//	Assert::IsTrue(message.getDataType(20) == OSC::DataType::Float, L"Datatype does not match", LINE_INFO());
+		//}
+
+
+		//TEST_METHOD(OSCReadMessageStruct) {
+		//	auto message = OSC::StructMessage<Data, uint32_t>();
+
+		//	auto structCons = OSCStructDataConsumer();
+
+		//	message.setAddress(structCons.pattern());
+		//	message.messageStruct.int1 = 1;
+		//	message.messageStruct.int2 = 2;
+		//	message.messageStruct.int3 = 3;
+		//	message.messageStruct.int4 = 4;
+		//	message.messageStruct.int5 = 5;
+
+		//	auto OSC = OSC::Arduino<OSC::StructMessage<Data, uint32_t>>(1, 0);
+		//	auto Udp = UDP();
+
+		//	OSC.bindUDP(&Udp, 1, 1);
+		//	OSC.addConsumer(&structCons);
+
+		//	message.send(&Udp);
+
+		//	OSC.loop(false);
+
+		//	Assert::AreEqual(1u, structCons.structMessage->messageStruct.int1, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(2u, structCons.structMessage->messageStruct.int2, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(3u, structCons.structMessage->messageStruct.int3, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(4u, structCons.structMessage->messageStruct.int4, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual(5u, structCons.structMessage->messageStruct.int5, L"Struct does not contain same value", LINE_INFO());
+		//}
+
+		//TEST_METHOD(OSCReadEdtMessageStruct) {
+		//	auto message = OSC::StructMessage<OSC::EdtMessage, uint8_t>();
+
+		//	auto structCons = OSCEdtMessageConsumer();
+
+		//	message.setAddress(structCons.pattern());
+		//	message.messageStruct.command = OSC::ColorCommands::SinglePulse;
+		//	message.messageStruct.commands.singleColor.duration = 1;
+		//	message.messageStruct.commands.singleColor.end = 2;
+		//	message.messageStruct.commands.singleColor.hue = 3;
+		//	message.messageStruct.commands.singleColor.saturation = 4;
+		//	message.messageStruct.commands.singleColor.start = 5;
+		//	message.messageStruct.commands.singleColor.value = 6;
+
+		//	auto OSC = OSC::Arduino<OSC::StructMessage<OSC::EdtMessage, uint8_t>>(1, 0);
+		//	auto Udp = UDP();
+
+		//	OSC.bindUDP(&Udp, 1, 1);
+		//	OSC.addConsumer(&structCons);
+
+		//	message.send(&Udp);
+
+		//	OSC.loop(false);
+
+		//	Assert::AreEqual((int)OSC::ColorCommands::SinglePulse, (int)structCons.structMessage->messageStruct.command, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual((uint8_t)1, structCons.structMessage->messageStruct.commands.singleColor.duration, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual((uint8_t)2, structCons.structMessage->messageStruct.commands.singleColor.end, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual((uint8_t)3, structCons.structMessage->messageStruct.commands.singleColor.hue, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual((uint8_t)4, structCons.structMessage->messageStruct.commands.singleColor.saturation, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual((uint8_t)5, structCons.structMessage->messageStruct.commands.singleColor.start, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual((uint8_t)6, structCons.structMessage->messageStruct.commands.singleColor.value, L"Struct does not contain same value", LINE_INFO());
+		//}
+
+		//TEST_METHOD(OSCReadEdtMessageFromRawStruct) {
+		//	auto message = OSC::StructMessage<OSC::EdtMessage, uint8_t>();
+		//	auto structCons = OSCEdtMessageConsumer();
+		//	auto print = Print();
+
+		//	std::string testString = "/Some/Address___,iiiiiii_______\x1___\x2___\x3___\x4___\x5___\x6___\x7";
+		//	int length = testString.length();
+
+		//	print.write(testString.c_str(), length);
+
+		//	message.setAddress("/Some/Address");
+		//	message.reserveBuffer(length);
+		//	memcpy(message.processBuffer, print.reversedBuffer, length);
+
+		//	message.process(false);
+
+		//	auto OSC = OSC::Arduino<OSC::StructMessage<OSC::EdtMessage, uint8_t>>(1, 0);
+		//	auto Udp = UDP();
+
+		//	OSC.bindUDP(&Udp, 1, 1);
+		//	OSC.addConsumer(&structCons);
+
+		//	message.send(&Udp, false);
+
+		//	OSC.loop(false);
+
+		//	Assert::AreEqual((int)OSC::ColorCommands::SinglePulse, (int)structCons.structMessage->messageStruct.command, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual((uint8_t)7, structCons.structMessage->messageStruct.commands.singleColor.duration, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual((uint8_t)3, structCons.structMessage->messageStruct.commands.singleColor.end, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual((uint8_t)4, structCons.structMessage->messageStruct.commands.singleColor.hue, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual((uint8_t)5, structCons.structMessage->messageStruct.commands.singleColor.saturation, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual((uint8_t)2, structCons.structMessage->messageStruct.commands.singleColor.start, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual((uint8_t)6, structCons.structMessage->messageStruct.commands.singleColor.value, L"Struct does not contain same value", LINE_INFO());
+		//}
+
+		//TEST_METHOD(OSCReadEdtMessageFromRaw2Struct) {
+		//	auto message = OSC::StructMessage<OSC::EdtMessage, uint8_t>();
+		//	auto structCons = OSCEdtMessageConsumer();
+		//	auto print = Print();
+
+		//	std::string testString = "/Some/Address___,iii_______\x6___\x2___\x3";
+		//	int length = testString.length();
+
+		//	print.write(testString.c_str(), length);
+
+		//	message.setAddress("/Some/Address");
+		//	message.reserveBuffer(length);
+		//	memcpy(message.processBuffer, print.reversedBuffer, length);
+
+		//	message.process(false);
+
+		//	auto OSC = OSC::Arduino<OSC::StructMessage<OSC::EdtMessage, uint8_t>>(1, 0);
+		//	auto Udp = UDP();
+
+		//	OSC.bindUDP(&Udp, 1, 1);
+		//	OSC.addConsumer(&structCons);
+
+		//	message.send(&Udp, false);
+
+		//	OSC.loop(false);
+
+		//	Assert::AreEqual((int)OSC::ColorCommands::Strobo, (int)structCons.structMessage->messageStruct.command, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual((uint8_t)2, structCons.structMessage->messageStruct.commands.strobo.hue, L"Struct does not contain same value", LINE_INFO());
+		//	Assert::AreEqual((uint8_t)3, structCons.structMessage->messageStruct.commands.strobo.intensity, L"Struct does not contain same value", LINE_INFO());
+		//}
 
 	};
 }
