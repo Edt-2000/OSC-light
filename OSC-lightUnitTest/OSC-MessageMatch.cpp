@@ -574,7 +574,7 @@ namespace OSClightUnitTest
 
 			int bufferSizePre = OSC.bufferMessage.bufferLength;
 
-			for (int i = 0; i < 1000; i++) {
+			for (int i = 0; i < 1000000; i++) {
 				OSC.loop(true);
 			}
 
@@ -1021,6 +1021,7 @@ namespace OSClightUnitTest
 			Assert::IsTrue(valueStruct < valueRegular, L"Better method faster", LINE_INFO());
 		}
 
+		// TODO: speed test with complete setup
 
 		// STRUCT Message Consumer
 		TEST_METHOD(OSCReadAsStruct) {

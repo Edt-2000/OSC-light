@@ -20,12 +20,6 @@ namespace OSC {
 		StructMessage() {
 			address = NULL;
 		}
-		~StructMessage() {
-			if (bufferLength > 0) {
-				delete processBuffer;
-				delete subBuffer;
-			}
-		}
 
 		// Sends the data using the given Print object.s
 		void send(Print * print, bool platformIsBigEndian = _isBigEndian()) {

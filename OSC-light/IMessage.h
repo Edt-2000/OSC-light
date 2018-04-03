@@ -17,24 +17,32 @@ namespace OSC {
 	class IMessage
 	{
 	private:
+		
 
 	public:
 		// Length of the process buffer
-		int bufferLength = 4;
+		int bufferLength = 0;
 
 		// Process buffer for writing raw OSC data
-		char * processBuffer = new char[4];
+		char * processBuffer;
 
 		// Sub process buffer for writing chucks of buffered raw OSC data
-		char * subBuffer = new char[4];
+		char * subBuffer;
 
 		// Char array containing the address 
 		char * address;
 
+		virtual ~IMessage() {
+			if (bufferLength > 0) {
+				delete[] processBuffer;
+				delete[] subBuffer;
+			}
+		}
+
 		// Sets the address of the message.
 		void setAddress(const char * newAddress) {
 			if (address != nullptr) {
-				delete address;
+				delete[] address;
 			}
 
 			address = new char[strlen(newAddress) + 1];
