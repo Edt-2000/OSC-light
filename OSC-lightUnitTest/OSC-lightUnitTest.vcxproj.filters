@@ -38,5 +38,8 @@
     <ClCompile Include="OSC-MessageMatch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="OSC-SimpleMessageTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
