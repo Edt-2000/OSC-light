@@ -34,6 +34,7 @@ namespace OSC {
 		int _consumers = 0;
 
 		bool _useSerial = false;
+		bool _useBoth = false;
 
 	public:
 		MessageType bufferMessage;
@@ -59,6 +60,13 @@ namespace OSC {
 			_useSerial = true;
 		}
 
+		void bindBoth(UDP * udp, IPAddress remoteIP, int remotePort, Stream * serial) {
+			bindUDP(udp, remoteIP, remotePort);
+			bindStream(serial);
+
+			_useBoth = true;
+		}
+
 		// adds an OSC message consumer
 		void addConsumer(MessageConsumer<MessageType> * consumer) {
 			_oscConsumers[_consumers++] = consumer;
@@ -76,7 +84,7 @@ namespace OSC {
 
 			i = 0;
 
-			if(!_useSerial) {
+			if(_useBoth || !_useSerial) {
 				// first, loop all producer's loop methods, then get all the messages out
 				while (i < _producers) {
 
@@ -116,7 +124,7 @@ namespace OSC {
 					}
 				}
 			}
-			else {
+			if(_useBoth || _useSerial) {
 				// first, loop all producer's loop methods, then get all the messages out
 				while (i < _producers) {
 
@@ -127,6 +135,8 @@ namespace OSC {
 
 						if (message->isSendableMessage()) {
 							message->send(_serialHandle);
+							
+							message->setValidData(true);
 						}
 					}
 					++i;

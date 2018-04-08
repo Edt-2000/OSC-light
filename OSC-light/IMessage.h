@@ -16,9 +16,6 @@ namespace OSC {
 
 	class IMessage
 	{
-	private:
-		
-
 	public:
 		// Length of the process buffer
 		int bufferLength = 0;
