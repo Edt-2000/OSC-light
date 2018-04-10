@@ -14,7 +14,6 @@ namespace OSC {
 	class Message : public IMessage
 	{
 	public:
-
 		// Number of data elements in data array
 		int dataCount = 0;
 
@@ -26,9 +25,11 @@ namespace OSC {
 
 		Message() {
 			address = NULL;
+			messageType = MessageType::Regular;
 		}
 		Message(int dataNumber) {
 			address = NULL;
+			messageType = MessageType::Regular;
 
 			reserveAtLeast(dataNumber);
 		}

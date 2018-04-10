@@ -6,6 +6,7 @@ public:
 	char * fullBuffer;
 	char * reversedBuffer;
 	int bufferSize = 0;
+	int internalPointer = 0;
 
 	void write(const char * data, int dataCount) {
 		if (bufferSize > 0 && dataCount > bufferSize) {
@@ -36,5 +37,7 @@ public:
 
 		fullBuffer[dataCount] = '\0';
 		reversedBuffer[dataCount] = '\0';
+
+		internalPointer = 0;
 	}
 };

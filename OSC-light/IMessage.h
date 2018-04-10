@@ -14,9 +14,17 @@ namespace OSC {
 	// static helpers
 	static Match _matchHelper = Match();
 
+	enum MessageType {
+		Regular = 1,
+		Struct = 2
+	};
+
 	class IMessage
 	{
 	public:
+		// TODO: convert this to a virtual method which implements method for determining valid serial buffer length
+		MessageType messageType;
+
 		// Length of the process buffer
 		int bufferLength = 0;
 
@@ -66,13 +74,20 @@ namespace OSC {
 		void reserveBuffer(int dataLength) {
 			if (dataLength > bufferLength) {
 				if (bufferLength > 0) {
+					memcpy(subBuffer, processBuffer, bufferLength);
 					delete[] processBuffer;
+				}
+
+				processBuffer = new char[dataLength + 4];
+
+				// restore process buffer to allow for further processing
+				if (bufferLength > 0) {
+					memcpy(processBuffer, subBuffer, bufferLength);
 					delete[] subBuffer;
 				}
 
 				bufferLength = dataLength + 4;
 
-				processBuffer = new char[bufferLength];
 				subBuffer = new char[bufferLength];
 			}
 		}

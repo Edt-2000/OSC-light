@@ -84,7 +84,7 @@ namespace OSC {
 
 			i = 0;
 
-			if(_useBoth || !_useSerial) {
+			if (_useBoth || !_useSerial) {
 				// first, loop all producer's loop methods, then get all the messages out
 				while (i < _producers) {
 
@@ -124,7 +124,7 @@ namespace OSC {
 					}
 				}
 			}
-			if(_useBoth || _useSerial) {
+			if (_useBoth || _useSerial) {
 				// first, loop all producer's loop methods, then get all the messages out
 				while (i < _producers) {
 
@@ -135,7 +135,7 @@ namespace OSC {
 
 						if (message->isSendableMessage()) {
 							message->send(_serialHandle);
-							
+
 							message->setValidData(true);
 						}
 					}
@@ -144,13 +144,12 @@ namespace OSC {
 
 				// then process all the messages in
 				if (_consumers > 0) {
-					if ((size = _serialHandle->available()) > 0) {
-
+					while ((size = _serialHandle->available()) >= 16) {
 						// make sure buffer is big enough
-						bufferMessage.reserveBuffer(size);
+						bufferMessage.reserveBuffer(16);
 
-						// write udp data to buffer
-						_serialHandle->readBytes(bufferMessage.processBuffer, size);
+						// write serial data to buffer
+						_serialHandle->readBytes(bufferMessage.processBuffer, 16);
 
 						// reuse the same message everytime to save repetitive memory allocations
 						bufferMessage.process();

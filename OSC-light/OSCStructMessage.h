@@ -19,6 +19,7 @@ namespace OSC {
 
 		StructMessage() {
 			address = NULL;
+			messageType = MessageType::Struct;
 		}
 
 		// Sends the data using the given Print object.s
