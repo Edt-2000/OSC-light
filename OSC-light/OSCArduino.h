@@ -81,8 +81,6 @@ namespace OSC {
 		void loop(bool send = true) {
 			int i;
 			int size;
-			int copySize;
-			bool goodMessage;
 
 			i = 0;
 
@@ -146,22 +144,9 @@ namespace OSC {
 
 				// then process all the messages in
 				if (_consumers > 0) {
-					goodMessage = false;
-
-					// if(_serialHandle->available() > 0) {
-
-					// 	bufferMessage.reserveBuffer(32);
-
-					// if(_serialHandle->peek() != '/') {
-					// 	_serialHandle->readBytesUntil('/', bufferMessage.processBuffer, size);
-					// }
-
-					if ((size = _serialHandle->available()) == 12) {
-						// TODO: temp hack
-						size = 12;
-
+					if ((size = _serialHandle->available()) > 0) {
 						// make sure buffer is big enough
-						bufferMessage.reserveBuffer(12);
+						bufferMessage.reserveBuffer(size);
 
 						// write serial data to buffer
 						_serialHandle->readBytes(bufferMessage.processBuffer, size);
@@ -171,20 +156,11 @@ namespace OSC {
 							i = 0;
 							do {
 								if (bufferMessage.isValidRoute(_oscConsumers[i]->pattern())) {
-									goodMessage = true;
 									_oscConsumers[i]->callbackMessage(&bufferMessage);
 								}
 							} while (++i < _consumers);
 						}
-
-						// if (!goodMessage) {
-						// 	_serialHandle->flush();
-						// }
 					}
-					else if(_serialHandle->available() > 12) {
-						_serialHandle->flush();
-					}
-					//}
 				}
 			}
 		}
