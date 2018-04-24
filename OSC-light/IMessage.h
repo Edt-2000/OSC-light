@@ -14,17 +14,9 @@ namespace OSC {
 	// static helpers
 	static Match _matchHelper = Match();
 
-	enum MessageType {
-		Regular = 1,
-		Struct = 2
-	};
-
 	class IMessage
 	{
 	public:
-		// TODO: convert this to a virtual method which implements method for determining valid serial buffer length
-		MessageType messageType;
-
 		// Length of the process buffer
 		int bufferLength = 0;
 
@@ -95,9 +87,12 @@ namespace OSC {
 		// Sends the data using the given Print object.
 		virtual void send(Print *, bool platformIsBigEndian = _isBigEndian()) = 0;
 
+		// Checks if the data in process buffer is valid and returns amount of bytes to be copied
+		virtual int determineSize(int size) = 0;
+
 		// Fills the data with the given data buffer.
 		// To improve performance, do not destroy instances of OSCMessage but use process() multiple times.
-		virtual void process(bool platformIsBigEndian = _isBigEndian()) = 0;
+		virtual bool process(bool platformIsBigEndian = _isBigEndian()) = 0;
 	protected:
 		bool _validData = true;
 

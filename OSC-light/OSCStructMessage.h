@@ -19,7 +19,6 @@ namespace OSC {
 
 		StructMessage() {
 			address = NULL;
-			messageType = MessageType::Struct;
 		}
 
 		// Sends the data using the given Print object.s
@@ -89,9 +88,14 @@ namespace OSC {
 
 		}
 
+		// Checks if the data in process buffer is valid
+		int determineSize(int size) {
+			return size >= sizeof(Struct) ? sizeof(Struct) : 0;
+		}
+
 		// Fills the data with the given data buffer.
 		// To improve performance, do not destroy instances of OSCMessage but use process() multiple times.
-		void process(bool platformIsBigEndian = _isBigEndian()) {
+		bool process(bool platformIsBigEndian = _isBigEndian()) {
 			
 			int addressLength = 0;
 			int typeStart = 0;
@@ -118,10 +122,12 @@ namespace OSC {
 
 				// reverse all the data in the process buffer
 				for (int i = 0; i < newDataCount; ++i) {
-					memcpy(buffer, processBuffer + dataStart + (4 * i), 4);
+					int offset = dataStart + (4 * i);
+
+					memcpy(buffer, processBuffer + offset, 4);
 
 					for (int d = 0; d < 4; ++d) {
-						processBuffer[dataStart + (4 * i) + d] = buffer[3 - d];
+						processBuffer[offset + d] = buffer[3 - d];
 					}
 				}
 			}
@@ -129,6 +135,9 @@ namespace OSC {
 			for (int i = 0; i < newDataCount; i++) {
 				memcpy(((char*)&messageStruct) + (i * sizeof(intSize)), processBuffer + dataStart + (i * 4), sizeof(intSize));
 			}
+
+			// for now, every message is ok
+			return true;
 		}
 	};
 

@@ -81,6 +81,8 @@ namespace OSC {
 		void loop(bool send = true) {
 			int i;
 			int size;
+			int copySize;
+			bool goodMessage;
 
 			i = 0;
 
@@ -144,23 +146,45 @@ namespace OSC {
 
 				// then process all the messages in
 				if (_consumers > 0) {
-					while ((size = _serialHandle->available()) >= 16) {
+					goodMessage = false;
+
+					// if(_serialHandle->available() > 0) {
+
+					// 	bufferMessage.reserveBuffer(32);
+
+					// if(_serialHandle->peek() != '/') {
+					// 	_serialHandle->readBytesUntil('/', bufferMessage.processBuffer, size);
+					// }
+
+					if ((size = _serialHandle->available()) == 12) {
+						// TODO: temp hack
+						size = 12;
+
 						// make sure buffer is big enough
-						bufferMessage.reserveBuffer(16);
+						bufferMessage.reserveBuffer(12);
 
 						// write serial data to buffer
-						_serialHandle->readBytes(bufferMessage.processBuffer, 16);
+						_serialHandle->readBytes(bufferMessage.processBuffer, size);
 
 						// reuse the same message everytime to save repetitive memory allocations
-						bufferMessage.process();
+						if (bufferMessage.process()) {
+							i = 0;
+							do {
+								if (bufferMessage.isValidRoute(_oscConsumers[i]->pattern())) {
+									goodMessage = true;
+									_oscConsumers[i]->callbackMessage(&bufferMessage);
+								}
+							} while (++i < _consumers);
+						}
 
-						i = 0;
-						do {
-							if (bufferMessage.isValidRoute(_oscConsumers[i]->pattern())) {
-								_oscConsumers[i]->callbackMessage(&bufferMessage);
-							}
-						} while (++i < _consumers);
+						// if (!goodMessage) {
+						// 	_serialHandle->flush();
+						// }
 					}
+					else if(_serialHandle->available() > 12) {
+						_serialHandle->flush();
+					}
+					//}
 				}
 			}
 		}

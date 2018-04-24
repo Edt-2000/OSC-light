@@ -25,11 +25,9 @@ namespace OSC {
 
 		Message() {
 			address = NULL;
-			messageType = MessageType::Regular;
 		}
 		Message(int dataNumber) {
 			address = NULL;
-			messageType = MessageType::Regular;
 
 			reserveAtLeast(dataNumber);
 		}
@@ -219,9 +217,14 @@ namespace OSC {
 			print->write(processBuffer, bufferSize);
 		}
 
+		// Checks if the data in process buffer is valid
+		int determineSize(int size) {
+			return size > 0 ? size : 0;
+		}
+
 		// Fills the data with the given data buffer.
 		// To improve performance, do not destroy instances of OSCMessage but use process() multiple times.
-		void process(bool platformIsBigEndian = _isBigEndian()) {
+		bool process(bool platformIsBigEndian = _isBigEndian()) {
 			// make sure the message is empty
 			empty();
 
@@ -273,6 +276,9 @@ namespace OSC {
 			}
 			
 			dataCount = newDataCount;
+
+			// for now, every message is ok
+			return true;
 		}
 	};
 };
