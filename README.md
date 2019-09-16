@@ -4,11 +4,10 @@ Light, fast but limited OSC library
 ## Sample implementations
 This library was designed to work with the Edt-2000 OSC ecosystem. The main focus was to be extermely low latency and fast, giving up a lot of features. It only supports a very small part of the OSC spec, and only supports int's and float's in OSC messages.
 
-Some sample implementations:
+Some sample implementations and usage:
 
-- `OSC::Arduino`: https://github.com/Edt-2000/Edt-Arduinosaurus/blob/master/Arduino/libraries/Edt-app/LEDApplication.h
-- `OSC::MessageConsumer`: https://github.com/Edt-2000/Edt-Arduinosaurus/blob/master/Arduino/libraries/Edt-devices/EdtRGB.h
-- `OSC::MessageProducer`: https://github.com/Edt-2000/Edt-Arduinosaurus/blob/master/Arduino/libraries/Edt-lib/Trak.h (currently incompatible with version 1.3, will be updated in the future).
+- `OSC::Arduino`: https://github.com/Edt-2000/Edt-2000-microcontrollers/blob/master/src/Edt-LedHub/lib/EdtLed/ledApp.h
+- `OSC::MessageConsumer`: https://github.com/Edt-2000/Edt-2000-microcontrollers/blob/master/src/Edt-Core/lib/Messages/CommandMessageConsumer.h
 
 ## Basic implementation
 To get this library working, start with the following implementation.
