@@ -7,10 +7,9 @@
 #include "OSCMessageConsumer.h"
 #include "OSCMessageProducer.h"
 
-#ifdef _MSC_VER
-#include "../OSC-lightUnitTest/Udp.h"
-#include "../OSC-lightUnitTest/Stream.h"
-typedef unsigned int uint32_t;
+#ifdef UNIT_TEST 
+#include <UdpForTest.h>
+#include <StreamForTest.h>
 #else
 #include <Udp.h>
 #endif
@@ -105,7 +104,6 @@ namespace OSC {
 				// then process all the messages in
 				if (_consumers > 0) {
 					if ((size = _udpHandle->parsePacket()) > 0) {
-
 						// make sure buffer is big enough
 						bufferMessage.reserveBuffer(size);
 

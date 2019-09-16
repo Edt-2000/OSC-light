@@ -1,5 +1,9 @@
 #pragma once
 
+#include <cstring>
+
+using namespace std;
+
 namespace OSC {
 	enum class DataType {
 		Float = 1,

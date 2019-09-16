@@ -1,9 +1,9 @@
 #pragma once
 
-// mock the IPAddress
-#ifdef _MSC_VER
+#include <PrintForTest.h>
+#include <cstring>
+
 typedef int IPAddress;
-#endif;
 
 class UDP : public Print {
 public:
@@ -27,7 +27,7 @@ public:
 
 	void read(char * buffer, int size) {
 		if (this->bufferSize > 0) {
-			memcpy_s(buffer, size, this->buffer, this->bufferSize);
+			memcpy(buffer, this->buffer, this->bufferSize);
 		}
 	}
 
