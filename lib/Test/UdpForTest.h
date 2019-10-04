@@ -5,34 +5,34 @@
 
 typedef int IPAddress;
 
-class UDP : public Print {
+class UDP : public Print
+{
 public:
 	IPAddress ip;
 
-	void beginPacket(IPAddress ip, int port) {
-
+	void beginPacket(IPAddress ip, int port)
+	{
 	}
 
-	void endPacket() {
-
+	void endPacket()
+	{
 	}
 
-	IPAddress remoteIP() {
+	IPAddress remoteIP()
+	{
 		return ip;
 	}
 
-	int parsePacket() {
-		return bufferSize;
+	int parsePacket()
+	{
+		return dataCountInBuffer;
 	}
 
-	void read(char * buffer, int size) {
-		if (this->bufferSize > 0) {
-			memcpy(buffer, this->buffer, this->bufferSize);
+	void read(char *buffer, const int size)
+	{
+		if (dataCountInBuffer >= size)
+		{
+			memcpy(buffer, printBuffer, size);
 		}
-	}
-
-	void flush() {
-		delete[] buffer;
-		bufferSize = 0;
 	}
 };

@@ -11,25 +11,8 @@
 #include <Data.h>
 
 #include <string>
-
-void OSCMessageMatchTest()
-{
-    auto message = OSC::Message();
-
-    message.setAddress("/M");
-
-    TEST_ASSERT_TRUE(message.isValidRoute("/M"));
-
-    message.setAddress("/New/Address");
-
-    TEST_ASSERT_FALSE(message.isValidRoute("/M"));
-    TEST_ASSERT_TRUE(message.isValidRoute("/New/Address"));
-
-    message.setAddress("/M");
-
-    TEST_ASSERT_TRUE(message.isValidRoute("/M"));
-    TEST_ASSERT_FALSE(message.isValidRoute("/New/Address"));
-}
+#include <iostream>
+#include <memory>
 
 void OSCMessageContentTest()
 {
@@ -59,9 +42,11 @@ void OSCMessageContentTest()
 
     message.send(&print);
 
-    newMessage.reserveBuffer(print.bufferSize);
-    newMessage.processBuffer = print.buffer;
-    newMessage.process();
+    TEST_ASSERT_GREATER_THAN(0, print.dataCountInBuffer);
+
+    std::unique_ptr<char[]> buffer(new char[print.dataCountInBuffer]);
+
+    newMessage.process(print.dataCountInBuffer, print.printBuffer, buffer.get());
 
     for (int i = 0; i < 16; i++)
     {
@@ -80,18 +65,6 @@ void OSCMessageContentTest()
     }
 
     TEST_ASSERT_TRUE(strcmp(message.address, newMessage.address) == 0);
-
-    int bufferLength = newMessage.bufferLength;
-
-    for (int i = 0; i < 1000; i++)
-    {
-
-        newMessage.reserveBuffer(print.bufferSize);
-        newMessage.processBuffer = print.buffer;
-        newMessage.process();
-    }
-
-    TEST_ASSERT_TRUE(bufferLength == newMessage.bufferLength);
 }
 
 void OSCSerializationBigEndian()
@@ -110,7 +83,7 @@ void OSCSerializationBigEndian()
 
     message.send(&print, false);
 
-    std::string stringFromSerialization(print.fullBuffer);
+    std::string stringFromSerialization(print.printUnderscoredBuffer);
 
     TEST_ASSERT_EQUAL_STRING(
         "/Some/Address___,iiiii_____\x1___\x2___\x3___\x4___\x5",
@@ -133,7 +106,7 @@ void OSCSerializationLittleEndian()
 
     message.send(&print, true);
 
-    std::string stringFromSerialization(print.fullBuffer);
+    std::string stringFromSerialization(print.printUnderscoredBuffer);
 
     TEST_ASSERT_EQUAL_STRING(
         "/Some/Address___,iiiii__\x1___\x2___\x3___\x4___\x5___",
@@ -152,10 +125,10 @@ void OSCDeserializationBigEndian()
 
     message.setAddress("/Some/Address");
     message.empty();
-    message.reserveBuffer(length);
-    memcpy(message.processBuffer, print.reversedBuffer, length);
 
-    message.process(false);
+    std::unique_ptr<char[]> buffer(new char[print.dataCountInBuffer]);
+
+    message.process(print.dataCountInBuffer, print.printNormalizedBuffer, buffer.get(), false);
 
     TEST_ASSERT_EQUAL(1u, message.getInt(0));
     TEST_ASSERT_EQUAL(2u, message.getInt(1));
@@ -176,10 +149,10 @@ void OSCDeserializationLittleEndian()
 
     message.setAddress("/Some/Address");
     message.empty();
-    message.reserveBuffer(length);
-    memcpy(message.processBuffer, print.reversedBuffer, length);
 
-    message.process(true);
+    std::unique_ptr<char[]> buffer(new char[print.dataCountInBuffer]);
+
+    message.process(print.dataCountInBuffer, print.printNormalizedBuffer, buffer.get(), true);
 
     TEST_ASSERT_EQUAL(1u, message.getInt(0));
     TEST_ASSERT_EQUAL(2u, message.getInt(1));
@@ -203,9 +176,9 @@ void OSCStructMessageContentTest()
 
     message.send(&print);
 
-    newMessage.reserveBuffer(print.bufferSize);
-    newMessage.processBuffer = print.buffer;
-    newMessage.process();
+    std::unique_ptr<char[]> buffer(new char[print.dataCountInBuffer]);
+
+    newMessage.process(print.dataCountInBuffer, print.printBuffer, buffer.get());
 
     TEST_ASSERT_TRUE(message.messageStruct.int1 == newMessage.messageStruct.int1);
     TEST_ASSERT_TRUE(message.messageStruct.int2 == newMessage.messageStruct.int2);
@@ -214,18 +187,6 @@ void OSCStructMessageContentTest()
     TEST_ASSERT_TRUE(message.messageStruct.int5 == newMessage.messageStruct.int5);
 
     TEST_ASSERT_TRUE(strcmp(message.address, newMessage.address) == 0);
-
-    int bufferLength = newMessage.bufferLength;
-
-    for (int i = 0; i < 1000; i++)
-    {
-
-        newMessage.reserveBuffer(print.bufferSize);
-        newMessage.processBuffer = print.buffer;
-        newMessage.process();
-    }
-
-    TEST_ASSERT_TRUE(bufferLength == newMessage.bufferLength);
 }
 
 void OSCStructSerializationBigEndian()
@@ -243,7 +204,7 @@ void OSCStructSerializationBigEndian()
 
     message.send(&print, false);
 
-    std::string stringFromSerialization(print.fullBuffer);
+    std::string stringFromSerialization(print.printUnderscoredBuffer);
 
     TEST_ASSERT_EQUAL_STRING(
         "/Some/Address___,iiiii_____\x1___\x2___\x3___\x4___\x5",
@@ -265,7 +226,7 @@ void OSCStructSerializationLittleEndian()
 
     message.send(&print, true);
 
-    std::string stringFromSerialization(print.fullBuffer);
+    std::string stringFromSerialization(print.printUnderscoredBuffer);
 
     TEST_ASSERT_EQUAL_STRING(
         "/Some/Address___,iiiii__\x1___\x2___\x3___\x4___\x5___",
@@ -283,10 +244,10 @@ void OSCStructDeserializationBigEndian()
     print.write(testString.c_str(), length);
 
     message.setAddress("/Some/Address");
-    message.reserveBuffer(length);
-    memcpy(message.processBuffer, print.reversedBuffer, length);
 
-    message.process(false);
+    std::unique_ptr<char[]> buffer(new char[print.dataCountInBuffer]);
+
+    message.process(print.dataCountInBuffer, print.printNormalizedBuffer, buffer.get(), false);
 
     TEST_ASSERT_EQUAL(1u, message.messageStruct.int1);
     TEST_ASSERT_EQUAL(2u, message.messageStruct.int2);
@@ -306,10 +267,10 @@ void OSCStructDeserializationLittleEndian()
     print.write(testString.c_str(), length);
 
     message.setAddress("/Some/Address");
-    message.reserveBuffer(length);
-    memcpy(message.processBuffer, print.reversedBuffer, length);
 
-    message.process(true);
+    std::unique_ptr<char[]> buffer(new char[print.dataCountInBuffer]);
+
+    message.process(print.dataCountInBuffer, print.printNormalizedBuffer, buffer.get(), true);
 
     TEST_ASSERT_EQUAL(1u, message.messageStruct.int1);
     TEST_ASSERT_EQUAL(2u, message.messageStruct.int2);
@@ -318,9 +279,117 @@ void OSCStructDeserializationLittleEndian()
     TEST_ASSERT_EQUAL(5u, message.messageStruct.int5);
 }
 
+void OSCConsumeStructMessageLoop()
+{
+    auto OSC = OSC::Arduino<1, 0>();
+    auto Udp = UDP();
+
+    auto cons = MessageConsumer();
+
+    OSC.bindUDP(&Udp, 1, 1);
+
+    std::string testString = "/TEST___,iiiii_____\x1___\x2___\x3___\x4___\x5";
+    int length = testString.length();
+
+    Udp.write(testString.c_str(), length);
+    Udp.normalizeBuffer();
+
+    TEST_ASSERT_GREATER_THAN(0, Udp.parsePacket());
+
+    OSC.addConsumer(&cons);
+
+    OSC.loop(false);
+
+    TEST_ASSERT_TRUE(cons.callbackCalled);
+    TEST_ASSERT_EQUAL_INT32(1, cons._message.messageStruct.int1);
+    TEST_ASSERT_EQUAL_INT32(2, cons._message.messageStruct.int2);
+    TEST_ASSERT_EQUAL_INT32(3, cons._message.messageStruct.int3);
+    TEST_ASSERT_EQUAL_INT32(4, cons._message.messageStruct.int4);
+    TEST_ASSERT_EQUAL_INT32(5, cons._message.messageStruct.int5);
+}
+
+void OSCConsumeTooSmallStructMessageLoop()
+{
+    auto OSC = OSC::Arduino<1, 0>();
+    auto Udp = UDP();
+
+    auto cons = MessageConsumer();
+
+    OSC.bindUDP(&Udp, 1, 1);
+
+    std::string testString = "/TEST___,i_____\x1";
+    int length = testString.length();
+
+    Udp.write(testString.c_str(), length);
+    Udp.normalizeBuffer();
+
+    TEST_ASSERT_GREATER_THAN(0, Udp.parsePacket());
+
+    OSC.addConsumer(&cons);
+
+    OSC.loop(false);
+
+    TEST_ASSERT_FALSE(cons.callbackCalled);
+}
+
+void OSCConsumeTooBigStructMessageLoop()
+{
+    auto OSC = OSC::Arduino<1, 0>();
+    auto Udp = UDP();
+
+    auto cons = MessageConsumer();
+
+    OSC.bindUDP(&Udp, 1, 1);
+
+    std::string testString = "/TEST___,iiiiiiiiiiii______\x1___\x2___\x3___\x4___\x5___\x6____\x7___\x8___\x9___\x10___\x11___\x12";
+    int length = testString.length();
+
+    Udp.write(testString.c_str(), length);
+    Udp.normalizeBuffer();
+
+    TEST_ASSERT_GREATER_THAN(0, Udp.parsePacket());
+
+    OSC.addConsumer(&cons);
+
+    OSC.loop(false);
+
+    TEST_ASSERT_TRUE(cons.callbackCalled);
+    TEST_ASSERT_EQUAL_INT32(1, cons._message.messageStruct.int1);
+    TEST_ASSERT_EQUAL_INT32(2, cons._message.messageStruct.int2);
+    TEST_ASSERT_EQUAL_INT32(3, cons._message.messageStruct.int3);
+    TEST_ASSERT_EQUAL_INT32(4, cons._message.messageStruct.int4);
+    TEST_ASSERT_EQUAL_INT32(5, cons._message.messageStruct.int5);
+}
+
+void OSCProduceStructMessageLoop()
+{
+    auto OSC = OSC::Arduino<0, 1>();
+    auto Udp = UDP();
+
+    auto prod = MessageProducer();
+
+    OSC.bindUDP(&Udp, 1, 1);
+
+    OSC.addProducer(&prod);
+
+    prod._message.messageStruct.int1 = 1;
+    prod._message.messageStruct.int2 = 2;
+    prod._message.messageStruct.int3 = 3;
+    prod._message.messageStruct.int4 = 4;
+    prod._message.messageStruct.int5 = 5;
+
+    OSC.loop(true);
+
+    std::string stringFromSerialization(Udp.printUnderscoredBuffer);
+
+    TEST_ASSERT_EQUAL_STRING(
+        "/TEST___,iiiii_____\x1___\x2___\x3___\x4___\x5",
+        stringFromSerialization.c_str());
+}
+
 void OSCStructLoop()
 {
-    auto OSC = OSC::Arduino<OSC::StructMessage<Data, uint32_t>>(1, 1);
+    auto OSC = OSC::Arduino<1, 1>();
     auto Udp = UDP();
 
     auto cons = MessageConsumer();
@@ -335,33 +404,27 @@ void OSCStructLoop()
     OSC.loop(true);
     OSC.loop(true);
 
-    int bufferSizePre = OSC.bufferMessage.bufferLength;
-
     for (int i = 0; i < 1000; i++)
     {
-        prod.message.messageStruct.int1 = i + 0;
-        prod.message.messageStruct.int2 = i + 1;
-        prod.message.messageStruct.int3 = i + 2;
-        prod.message.messageStruct.int4 = i + 3;
-        prod.message.messageStruct.int5 = i + 4;
+        prod._message.messageStruct.int1 = i + 0;
+        prod._message.messageStruct.int2 = i + 1;
+        prod._message.messageStruct.int3 = i + 2;
+        prod._message.messageStruct.int4 = i + 3;
+        prod._message.messageStruct.int5 = i + 4;
 
         OSC.loop(true);
 
-        TEST_ASSERT_EQUAL_INT32(i + 0, cons.data.int1);
-        TEST_ASSERT_EQUAL_INT32(i + 1, cons.data.int2);
-        TEST_ASSERT_EQUAL_INT32(i + 2, cons.data.int3);
-        TEST_ASSERT_EQUAL_INT32(i + 3, cons.data.int4);
-        TEST_ASSERT_EQUAL_INT32(i + 4, cons.data.int5);
+        TEST_ASSERT_EQUAL_INT32(i + 0, cons._message.messageStruct.int1);
+        TEST_ASSERT_EQUAL_INT32(i + 1, cons._message.messageStruct.int2);
+        TEST_ASSERT_EQUAL_INT32(i + 2, cons._message.messageStruct.int3);
+        TEST_ASSERT_EQUAL_INT32(i + 3, cons._message.messageStruct.int4);
+        TEST_ASSERT_EQUAL_INT32(i + 4, cons._message.messageStruct.int5);
     }
-
-    int bufferSizePost = OSC.bufferMessage.bufferLength;
-
-    TEST_ASSERT_EQUAL_INT32(bufferSizePre, bufferSizePost);
 }
 
 void OSCStructLoopStream()
 {
-    auto OSC = OSC::Arduino<OSC::StructMessage<Data, uint32_t>>(1, 1);
+    auto OSC = OSC::Arduino<1, 1>();
     auto stream = Stream();
 
     auto cons = MessageConsumer();
@@ -376,37 +439,30 @@ void OSCStructLoopStream()
     OSC.loop(true);
     OSC.loop(true);
 
-    int bufferSizePre = OSC.bufferMessage.bufferLength;
-
     for (int i = 0; i < 1000; i++)
     {
-        prod.message.messageStruct.int1 = i + 0;
-        prod.message.messageStruct.int2 = i + 1;
-        prod.message.messageStruct.int3 = i + 2;
-        prod.message.messageStruct.int4 = i + 3;
-        prod.message.messageStruct.int5 = i + 4;
+        prod._message.messageStruct.int1 = i + 0;
+        prod._message.messageStruct.int2 = i + 1;
+        prod._message.messageStruct.int3 = i + 2;
+        prod._message.messageStruct.int4 = i + 3;
+        prod._message.messageStruct.int5 = i + 4;
 
         OSC.loop(true);
 
-        TEST_ASSERT_EQUAL_INT32(i + 0, cons.data.int1);
-        TEST_ASSERT_EQUAL_INT32(i + 1, cons.data.int2);
-        TEST_ASSERT_EQUAL_INT32(i + 2, cons.data.int3);
-        TEST_ASSERT_EQUAL_INT32(i + 3, cons.data.int4);
-        TEST_ASSERT_EQUAL_INT32(i + 4, cons.data.int5);
+        TEST_ASSERT_EQUAL_INT32(i + 0, cons._message.messageStruct.int1);
+        TEST_ASSERT_EQUAL_INT32(i + 1, cons._message.messageStruct.int2);
+        TEST_ASSERT_EQUAL_INT32(i + 2, cons._message.messageStruct.int3);
+        TEST_ASSERT_EQUAL_INT32(i + 3, cons._message.messageStruct.int4);
+        TEST_ASSERT_EQUAL_INT32(i + 4, cons._message.messageStruct.int5);
     }
-
-    int bufferSizePost = OSC.bufferMessage.bufferLength;
-
-    TEST_ASSERT_EQUAL_INT32(bufferSizePre, bufferSizePost);
 }
 
 void process()
 {
     UNITY_BEGIN();
-    RUN_TEST(OSCMessageMatchTest);
 
     RUN_TEST(OSCMessageContentTest);
-    
+
     RUN_TEST(OSCSerializationBigEndian);
     RUN_TEST(OSCSerializationLittleEndian);
     RUN_TEST(OSCDeserializationBigEndian);
@@ -419,6 +475,10 @@ void process()
     RUN_TEST(OSCStructDeserializationBigEndian);
     RUN_TEST(OSCStructDeserializationLittleEndian);
 
+    RUN_TEST(OSCConsumeStructMessageLoop);
+    RUN_TEST(OSCConsumeTooBigStructMessageLoop);
+    RUN_TEST(OSCConsumeTooSmallStructMessageLoop);
+    RUN_TEST(OSCProduceStructMessageLoop);
     RUN_TEST(OSCStructLoop);
     RUN_TEST(OSCStructLoopStream);
 

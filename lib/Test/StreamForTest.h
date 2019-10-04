@@ -5,28 +5,28 @@
 
 typedef int IPAddress;
 
-class Stream : public Print {
+class Stream : public Print
+{
 public:
 	IPAddress ip;
 
-	IPAddress remoteIP() {
+	IPAddress remoteIP()
+	{
 		return ip;
 	}
 
-	int available() {
-		return bufferSize;
+	int available()
+	{
+		return dataCountInBuffer;
 	}
 
-	void println(char * string) {}
+	void println(char *string) {}
 
-	void readBytes(char * buffer, int size) {
-		if (this->bufferSize > 0) {
-			memcpy(buffer, this->buffer, this->bufferSize);
+	void readBytes(char *buffer, const int size)
+	{
+		if (dataCountInBuffer >= size)
+		{
+			memcpy(buffer, printBuffer, size);
 		}
-	}
-
-	void flush() {
-		delete[] buffer;
-		bufferSize = 0;
 	}
 };
