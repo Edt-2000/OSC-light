@@ -1,9 +1,20 @@
 // dummy main
 
-void setup() {
+#if ARDUINO
 
+void setup()
+{
 }
 
-void loop() {
-
+void loop()
+{
 }
+
+#else
+
+int main(int argc, char **argv)
+{
+    return 0;
+}
+
+#endif

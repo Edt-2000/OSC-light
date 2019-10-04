@@ -1,7 +1,12 @@
 #pragma once
 
 #ifdef UNIT_TEST
-#include <PrintForTest.h>
+#ifdef ARDUINO
+#include <Arduino.h>
+#else
+#include <UdpForTest.h>
+#include <StreamForTest.h>
+#endif
 #else
 #include <Print.h>
 #endif
@@ -9,101 +14,64 @@
 #include "OSCData.h"
 #include "OSCMatch.h"
 
-namespace OSC {
+namespace OSC
+{
 
-	// static helpers
-	static Match _matchHelper = Match();
+class IMessage
+{
+public:
+	// Char array containing the address
+	char *address;
 
-	class IMessage
+	virtual ~IMessage()
 	{
-	public:
-		// Length of the process buffer
-		int bufferLength = 0;
+		delete address;
+	}
 
-		// Process buffer for writing raw OSC data
-		char * processBuffer;
-
-		// Sub process buffer for writing chucks of buffered raw OSC data
-		char * subBuffer;
-
-		// Char array containing the address 
-		char * address;
-
-		virtual ~IMessage() {
-			if (bufferLength > 0) {
-				delete[] processBuffer;
-				delete[] subBuffer;
-			}
+	// Sets the address of the message.
+	void setAddress(const char *newAddress)
+	{
+		if (address != nullptr)
+		{
+			delete[] address;
 		}
 
-		// Sets the address of the message.
-		void setAddress(const char * newAddress) {
-			if (address != nullptr) {
-				delete[] address;
-			}
+		address = new char[strlen(newAddress) + 1];
+		strcpy(address, newAddress);
+	}
 
-			address = new char[strlen(newAddress) + 1];
-			strcpy(address, newAddress);
-		}
+	// Boolean to evaluate whether the message should be send.
+	bool isSendableMessage()
+	{
+		return _validData;
+	}
 
-		// Evaluates wheter the given pattern is a valid route for the message.
-		bool isValidRoute(const char * pattern) {
-			// the address is of the message is the pattern to match
-			return _matchHelper.isMatch(pattern, address);
-		}
+	// Sets whether the data of the message is valid
+	void setValidData(bool valid)
+	{
+		_validData = valid;
+	}
 
-		// Boolean to evaluate whether the message should be send.
-		bool isSendableMessage() {
-			return _validData;
-		}
+	// Sends the data using the given Print object.
+	virtual void send(Print *, const bool platformIsBigEndian = _isBigEndian()) = 0;
 
-		// Sets whether the data of the message is valid
-		void setValidData(bool valid) {
-			_validData = valid;
-		}
+	// Fills the data with the given data buffer.
+	// To improve performance, do not destroy instances of OSCMessage but use process() multiple times.
+	virtual bool process(const int messageSize, const char *processBuffer, char *subBuffer, const bool platformIsBigEndian = _isBigEndian()) = 0;
 
-		// Reserves the amount of data for use in the process() / send() method.
-		void reserveBuffer(int dataLength) {
-			if (dataLength > bufferLength) {
-				if (bufferLength > 0) {
-					memcpy(subBuffer, processBuffer, bufferLength);
-					delete[] processBuffer;
-				}
+protected:
+	bool _validData = true;
 
-				processBuffer = new char[dataLength + 4];
+	static bool _isBigEndian()
+	{
+		const int one = 1;
+		const char sig = *(char *)&one;
 
-				// restore process buffer to allow for further processing
-				if (bufferLength > 0) {
-					memcpy(processBuffer, subBuffer, bufferLength);
-					delete[] subBuffer;
-				}
-
-				bufferLength = dataLength + 4;
-
-				subBuffer = new char[bufferLength];
-			}
-		}
-
-		// Sends the data using the given Print object.
-		virtual void send(Print *, bool platformIsBigEndian = _isBigEndian()) = 0;
-
-		// Checks if the data in process buffer is valid and returns amount of bytes to be copied
-		virtual int determineSize(int size) = 0;
-
-		// Fills the data with the given data buffer.
-		// To improve performance, do not destroy instances of OSCMessage but use process() multiple times.
-		virtual bool process(bool platformIsBigEndian = _isBigEndian()) = 0;
-	protected:
-		bool _validData = true;
-
-		static bool _isBigEndian() {
-			const int one = 1;
-			const char sig = *(char*)&one;
-
-			return (sig == 0);
-		}
-		static int _padSize(int bytes) { 
-			return (4 - (bytes & 03)) & 3; 
-		}
-	};
-}
+		return (sig == 0);
+	}
+	static int _padSize(int bytes)
+	{
+		return (4 - (bytes & 03)) & 3;
+	}
+};
+} // namespace OSC

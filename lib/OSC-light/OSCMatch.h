@@ -5,7 +5,7 @@
 //
 // OSC-light only supports a subset of the OSC specification concerning address pattern matching
 // This is to reduce the very memory and cycle intensive string matching
-// 
+//
 // ON ESP-8266 the ?-wildcard pattern is not supported.
 //
 //	Supported pattens:
@@ -60,109 +60,101 @@
 #define OSCwildcardFullMatch "*"
 #define OSCwildcardSingleMatch "?"
 
-namespace OSC {
-	class Match
+namespace OSC
+{
+class Match
+{
+private:
+	inline bool isWildcardMatch(const char *address, const char *pattern)
 	{
-	private:
-		char * _replacedAddressBuffer = new char[16];
-		int _replacedAddressBufferLength = 16;
+		const int patternLength = strlen(pattern) + 1;
 
-		char * _patternBuffer = new char[16];
-		char * _addressBuffer = new char[16];
-		int _bufferLength = 16;
+		char replacedAddressBuffer[patternLength];
 
-	public:
-		
-		bool isMatch(const char * address, const char * pattern, int addressOffset = 0, int patternOffset = 0) {
-			if (strcmp(address, pattern) == 0) {
-				return true;
+		strcpy(replacedAddressBuffer, address);
+
+		int i = 0;
+
+		// crawling throught the pattern might not be the fastest way of doing this
+		for (i = 0; i < patternLength; ++i)
+		{
+			if (strncmp(pattern + i, OSCwildcardSingleMatch, 1) == 0)
+			{
+				strncpy(replacedAddressBuffer + i, OSCwildcardSingleMatch, 1);
 			}
-			else {
-				int addressLength = strlen(address) + 1;
+		}
 
-				if (addressLength > _bufferLength) {
-					delete _patternBuffer;
-					delete _addressBuffer;
+		return strncmp(replacedAddressBuffer, pattern, patternLength) == 0;
+	}
 
-					_bufferLength = addressLength + 4;
+public:
+	bool isMatch(const char *address, const char *pattern, const int addressOffset = 0, const int patternOffset = 0)
+	{
+		if (strcmp(address, pattern) == 0)
+		{
+			return true;
+		}
+		else
+		{
+			const int addressLength = strlen(address) + 1;
 
-					_patternBuffer = new char[_bufferLength];
-					_addressBuffer = new char[_bufferLength];
-				}
+			char patternBuffer[addressLength];
+			char addressBuffer[addressLength];
 
-				strcpy(_patternBuffer, pattern + patternOffset);
-				strcpy(_addressBuffer, address + addressOffset);
+			strcpy(patternBuffer, pattern + patternOffset);
+			strcpy(addressBuffer, address + addressOffset);
 
-				char * patternPart;
-				char * addressPart;
+			if (addressBuffer != NULL)
+			{
+				auto patternPart = strtok(patternBuffer, OSCdevider);
+				auto addressPart = strtok(addressBuffer, OSCdevider);
 
-				if (_addressBuffer != NULL) {
-					patternPart = strtok(_patternBuffer, OSCdevider);
-					addressPart = strtok(_addressBuffer, OSCdevider);
+				if (patternPart != NULL)
+				{
+					bool continueMatching = false;
 
-					if (patternPart != NULL) {
-						bool continueMatching = false;
-
-						// address pattern compare
-						// full match
-						if (strcmp(addressPart, patternPart) == 0) {
-							continueMatching = true;
-						}
-						// asterisk
-						else if (strcmp(patternPart, OSCwildcardFullMatch) == 0) {
-							continueMatching = true;
-						}
-						// wildcard character
+					// address pattern compare
+					// full match
+					if (strcmp(addressPart, patternPart) == 0)
+					{
+						continueMatching = true;
+					}
+					// asterisk
+					else if (strcmp(patternPart, OSCwildcardFullMatch) == 0)
+					{
+						continueMatching = true;
+					}
+					// wildcard character
 #ifndef ARDUINO_ESP8266_THING
-						else if (strcspn(patternPart, OSCwildcardSingleMatch) < strlen(patternPart)) {
-							continueMatching = isWildcardMatch(addressPart, patternPart);
-						}
+					else if (strcspn(patternPart, OSCwildcardSingleMatch) < strlen(patternPart))
+					{
+						continueMatching = isWildcardMatch(addressPart, patternPart);
+					}
 #endif
 
-						if (continueMatching) {
-							bool patternCanContinue = (strlen(pattern) > patternOffset + strlen(patternPart) + 1);
-							bool addressCanContinue = (strlen(address) > addressOffset + strlen(addressPart) + 1);
+					if (continueMatching)
+					{
+						bool patternCanContinue = (strlen(pattern) > patternOffset + strlen(patternPart) + 1);
+						bool addressCanContinue = (strlen(address) > addressOffset + strlen(addressPart) + 1);
 
-							if (addressCanContinue && patternCanContinue) {
-								return isMatch(address, pattern, addressOffset + strlen(addressPart) + 1, patternOffset + strlen(patternPart) + 1);
-							}
-							else if (addressCanContinue && !patternCanContinue) {
-								return true;
-							}
-							else {
-								return (!addressCanContinue && !patternCanContinue);
-							}
+						if (addressCanContinue && patternCanContinue)
+						{
+							return isMatch(address, pattern, addressOffset + strlen(addressPart) + 1, patternOffset + strlen(patternPart) + 1);
+						}
+						else if (addressCanContinue && !patternCanContinue)
+						{
+							return true;
+						}
+						else
+						{
+							return (!addressCanContinue && !patternCanContinue);
 						}
 					}
 				}
 			}
-
-			return false;
 		}
 
-		inline bool isWildcardMatch(const char * address, const char * pattern) {
-			int patternLength = strlen(pattern) + 1;
-
-			if (patternLength > _replacedAddressBufferLength) {
-				delete _replacedAddressBuffer;
-
-				_replacedAddressBufferLength = patternLength + 4;
-
-				_replacedAddressBuffer = new char[patternLength];
-			}
-
-			strcpy(_replacedAddressBuffer, address);
-
-			int i = 0;
-
-			// crawling throught the pattern might not be the fastest way of doing this
-			for (i = 0; i < patternLength; ++i) {
-				if (strncmp(pattern + i, OSCwildcardSingleMatch, 1) == 0) {
-					strncpy(_replacedAddressBuffer + i, OSCwildcardSingleMatch, 1);
-				}
-			}
-
-			return strncmp(_replacedAddressBuffer, pattern, patternLength) == 0;
-		}
-	};
+		return false;
+	}
 };
+}; // namespace OSC

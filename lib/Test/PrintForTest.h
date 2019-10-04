@@ -7,48 +7,67 @@ typedef unsigned char uint8_t;
 
 class Print
 {
+protected:
+    void reserve(const int dataCount)
+    {
+        if (dataCount >= internalBufferSize)
+        {
+            delete printBuffer;
+            delete printUnderscoredBuffer;
+            delete printNormalizedBuffer;
+
+            internalBufferSize = dataCount + 16;
+
+            printBuffer = new char[internalBufferSize];
+            printUnderscoredBuffer = new char[internalBufferSize];
+            printNormalizedBuffer = new char[internalBufferSize];
+        }
+    }
+
 public:
-    char *buffer;
-    char *fullBuffer;
-    char *reversedBuffer;
-    int bufferSize = 0;
+    char *printBuffer;
+    char *printUnderscoredBuffer;
+    char *printNormalizedBuffer;
+    int dataCountInBuffer = 0;
+    int internalBufferSize = 0;
     int internalPointer = 0;
 
-    void write(const char *data, int dataCount)
+    void write(const char *data, const int dataCount)
     {
-        if (bufferSize > 0 && dataCount > bufferSize)
-        {
-            delete buffer;
-            delete fullBuffer;
-            delete reversedBuffer;
-        }
+        reserve(dataCount);
 
-        buffer = new char[dataCount + 1];
-        fullBuffer = new char[dataCount + 1];
-        reversedBuffer = new char[dataCount + 1];
+        dataCountInBuffer = dataCount;
 
-        bufferSize = dataCount;
-
-        memcpy(buffer, data, dataCount);
-        memcpy(fullBuffer, data, dataCount);
-        memcpy(reversedBuffer, data, dataCount);
+        memcpy(printBuffer, data, dataCount);
+        memcpy(printUnderscoredBuffer, data, dataCount);
+        memcpy(printNormalizedBuffer, data, dataCount);
 
         for (int i = 0; i < dataCount; i++)
         {
-            if (fullBuffer[i] == '\0')
+            if (printUnderscoredBuffer[i] == '\0')
             {
-                fullBuffer[i] = '_';
+                printUnderscoredBuffer[i] = '_';
             }
 
-            if (reversedBuffer[i] == '_')
+            if (printNormalizedBuffer[i] == '_')
             {
-                reversedBuffer[i] = '\0';
+                printNormalizedBuffer[i] = '\0';
             }
         }
 
-        fullBuffer[dataCount] = '\0';
-        reversedBuffer[dataCount] = '\0';
+        printUnderscoredBuffer[dataCount] = '\0';
+        printNormalizedBuffer[dataCount] = '\0';
 
         internalPointer = 0;
+    }
+
+    void flush()
+    {
+        dataCountInBuffer = 0;
+    }
+
+    void normalizeBuffer()
+    {
+        memcpy(printBuffer, printNormalizedBuffer, dataCountInBuffer);
     }
 };

@@ -1,25 +1,33 @@
 #pragma once
 
+#include <IMessage.h>
 #include <OSCStructMessage.h>
 #include <OSCMessageConsumer.h>
 #include <Data.h>
 
-class MessageConsumer : public OSC::MessageConsumer<OSC::StructMessage<Data, uint32_t>>
+class MessageConsumer : public OSC::MessageConsumer
 {
 public:
-	Data data;
+	OSC::StructMessage<Data, uint32_t> _message;
+	bool callbackCalled = false;
 
-	MessageConsumer()
+	MessageConsumer(const char *pattern = "/TEST")
 	{
+		_message.setAddress(pattern);
 	}
 
 	const char *pattern()
 	{
-		return "/TEST";
+		return _message.address;
 	}
 
-	void callbackMessage(OSC::StructMessage<Data, uint32_t> *msg)
+	OSC::IMessage *message()
 	{
-		data = Data(msg->messageStruct);
+		return &_message;
+	}
+
+	void callbackMessage()
+	{
+		callbackCalled = true;
 	}
 };

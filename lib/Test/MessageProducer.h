@@ -1,13 +1,14 @@
 #pragma once
 
+#include <IMessage.h>
 #include <OSCStructMessage.h>
 #include <OSCMessageProducer.h>
 #include <Data.h>
 
-class MessageProducer : public OSC::MessageProducer<OSC::StructMessage<Data, uint32_t>>
+class MessageProducer : public OSC::MessageProducer
 {
 public:
-	OSC::StructMessage<Data, uint32_t> message;
+	OSC::StructMessage<Data, uint32_t> _message;
 
 	MessageProducer()
 	{
@@ -15,13 +16,13 @@ public:
 
 	void loop()
 	{
-		message.setValidData(true);
+		_message.setValidData(true);
 	}
 
-	OSC::StructMessage<Data, uint32_t> *generateMessage()
+	OSC::IMessage *generateMessage()
 	{
-		message.setValidData(true);
-		message.setAddress("/TEST");
-		return &message;
+		_message.setValidData(true);
+		_message.setAddress("/TEST");
+		return &_message;
 	}
 };
