@@ -137,6 +137,54 @@ void OSCDeserializationBigEndian()
     TEST_ASSERT_EQUAL(5u, message.getInt(4));
 }
 
+void OSCDeserializationPattern1BigEndian()
+{
+    auto message = OSC::Message();
+    auto print = Print();
+
+    std::string testString = "/S?me/Addre?s___,iiiii_____\x1___\x2___\x3___\x4___\x5";
+    int length = testString.length();
+
+    print.write(testString.c_str(), length);
+
+    message.setAddress("/Some/Address");
+    message.empty();
+
+    std::unique_ptr<char[]> buffer(new char[print.dataCountInBuffer]);
+
+    message.process(print.dataCountInBuffer, print.printNormalizedBuffer, buffer.get(), false);
+
+    TEST_ASSERT_EQUAL(1u, message.getInt(0));
+    TEST_ASSERT_EQUAL(2u, message.getInt(1));
+    TEST_ASSERT_EQUAL(3u, message.getInt(2));
+    TEST_ASSERT_EQUAL(4u, message.getInt(3));
+    TEST_ASSERT_EQUAL(5u, message.getInt(4));
+}
+
+void OSCDeserializationPattern2BigEndian()
+{
+    auto message = OSC::Message();
+    auto print = Print();
+
+    std::string testString = "/S?me/*_,iiiii_____\x1___\x2___\x3___\x4___\x5";
+    int length = testString.length();
+
+    print.write(testString.c_str(), length);
+
+    message.setAddress("/Some/Address");
+    message.empty();
+
+    std::unique_ptr<char[]> buffer(new char[print.dataCountInBuffer]);
+
+    message.process(print.dataCountInBuffer, print.printNormalizedBuffer, buffer.get(), false);
+
+    TEST_ASSERT_EQUAL(1u, message.getInt(0));
+    TEST_ASSERT_EQUAL(2u, message.getInt(1));
+    TEST_ASSERT_EQUAL(3u, message.getInt(2));
+    TEST_ASSERT_EQUAL(4u, message.getInt(3));
+    TEST_ASSERT_EQUAL(5u, message.getInt(4));
+}
+
 void OSCDeserializationLittleEndian()
 {
     auto message = OSC::Message();
@@ -329,7 +377,8 @@ void OSCConsumeTooSmallStructMessageLoop()
 
     OSC.loop(false);
 
-    TEST_ASSERT_FALSE(cons.callbackCalled);
+    TEST_ASSERT_TRUE(cons.callbackCalled);
+    TEST_ASSERT_EQUAL_INT32(1, cons._message.messageStruct.int1);
 }
 
 void OSCConsumeTooBigStructMessageLoop()
@@ -466,6 +515,8 @@ void process()
     RUN_TEST(OSCSerializationBigEndian);
     RUN_TEST(OSCSerializationLittleEndian);
     RUN_TEST(OSCDeserializationBigEndian);
+    RUN_TEST(OSCDeserializationPattern1BigEndian);
+    RUN_TEST(OSCDeserializationPattern2BigEndian);
     RUN_TEST(OSCDeserializationLittleEndian);
 
     RUN_TEST(OSCStructMessageContentTest);

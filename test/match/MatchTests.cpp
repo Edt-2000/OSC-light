@@ -31,6 +31,13 @@ void OSCSimpleWildcardMatchesTest()
 {
     auto tester = OSC::Match();
 
+    auto pattern = "/F?\0iiii";
+    auto address = "/F1";
+
+    TEST_ASSERT_TRUE(tester.isMatch("/F1", "/F?"));
+    TEST_ASSERT_TRUE(tester.isMatch("/R1", "/R?"));
+    TEST_ASSERT_TRUE(tester.isMatch(address, pattern));
+    TEST_ASSERT_FALSE(tester.isMatch(pattern, address));
     TEST_ASSERT_TRUE(tester.isMatch("/Unit12345", "/Unit?2345"));
     TEST_ASSERT_TRUE(tester.isMatch("/Unit12345", "/Unit?2?45"));
     TEST_ASSERT_TRUE(tester.isMatch("/Unit12345", "/Unit?2?4?"));

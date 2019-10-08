@@ -16,7 +16,7 @@ public:
 		_message.setAddress(pattern);
 	}
 
-	const char *pattern()
+	const char *address()
 	{
 		return _message.address;
 	}

@@ -7,7 +7,7 @@ namespace OSC
 class MessageConsumer
 {
 public:
-	virtual const char *pattern() = 0;
+	virtual const char *address() = 0;
 	virtual IMessage *message() = 0;
 	virtual void callbackMessage() = 0;
 };

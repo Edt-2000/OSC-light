@@ -125,12 +125,10 @@ public:
 						continueMatching = true;
 					}
 					// wildcard character
-#ifndef ARDUINO_ESP8266_THING
 					else if (strcspn(patternPart, OSCwildcardSingleMatch) < strlen(patternPart))
 					{
 						continueMatching = isWildcardMatch(addressPart, patternPart);
 					}
-#endif
 
 					if (continueMatching)
 					{

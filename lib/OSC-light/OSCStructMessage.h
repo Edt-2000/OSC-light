@@ -112,13 +112,7 @@ public:
 		typeLength = strlen(subBuffer) + 1;
 		dataStart = typeStart + typeLength + _padSize(typeLength);
 
-		// check if message is big enough, if not, prevent reading beyond the end of the process buffer
-		if (dataStart + sizeof(Struct) > messageSize)
-		{
-			return false;
-		}
-
-		for (int i = 0; i < newDataCount; i++)
+		for (int i = 0; i < min(newDataCount, messageSize / sizeof(intSize)); i++)
 		{
 			memcpy(((char *)&messageStruct) + (i * sizeof(intSize)), processBuffer + dataStart + (i * 4), sizeof(intSize), platformIsBigEndian);
 		}

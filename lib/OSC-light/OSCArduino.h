@@ -150,7 +150,7 @@ private:
 
 		for (auto &consumer : _oscConsumers)
 		{
-			if (_matchHelper.isMatch(buffer, consumer->pattern()))
+			if (_matchHelper.isMatch(consumer->address(), buffer))
 			{
 				const auto message = consumer->message();
 
