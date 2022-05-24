@@ -14,9 +14,6 @@
 #include "IMessage.h"
 #include "EndianMemcpy.h"
 
-#include <memory>
-#include <iostream>
-
 namespace OSC
 {
 
