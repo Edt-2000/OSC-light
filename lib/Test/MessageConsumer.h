@@ -8,26 +8,26 @@
 class MessageConsumer : public OSC::MessageConsumer
 {
 public:
-	OSC::StructMessage<Data, uint32_t> _message;
+	const char * _address;
 	bool callbackCalled = false;
+	Data messageStruct;
 
 	MessageConsumer(const char *pattern = "/TEST")
 	{
-		_message.setAddress(pattern);
+		_address = pattern;
 	}
 
 	const char *address()
 	{
-		return _message.address;
+		return _address;
 	}
 
-	OSC::IMessage *message()
+	void callbackMessage(OSC::IMessage * message)
 	{
-		return &_message;
-	}
+		auto structMessage = (OSC::StructMessage<Data, uint32_t> *)message;
 
-	void callbackMessage()
-	{
+		messageStruct = structMessage->messageStruct;
+
 		callbackCalled = true;
 	}
 };

@@ -8,7 +8,6 @@ class MessageConsumer
 {
 public:
 	virtual const char *address() = 0;
-	virtual IMessage *message() = 0;
-	virtual void callbackMessage() = 0;
+	virtual void callbackMessage(IMessage *message) = 0;
 };
 } // namespace OSC

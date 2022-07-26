@@ -21,7 +21,7 @@
 
 namespace OSC
 {
-template <int numberOfConsumers, int numberOfProducers>
+template <int numberOfConsumers, int numberOfProducers, class TMessage>
 class Arduino
 {
 private:
@@ -32,6 +32,8 @@ private:
 
 	MessageConsumer *_oscConsumers[numberOfConsumers];
 	MessageProducer *_oscProducers[numberOfProducers];
+
+	IMessage *_message = new TMessage();
 
 	IPAddress _remoteIP;
 	int _remotePort;
@@ -144,16 +146,14 @@ private:
 	void _sendMessageToConsumers(const char *buffer, const int size)
 	{
 		char workBuffer[size];
-
-		for (auto &consumer : _oscConsumers)
-		{
-			if (_matchHelper.isMatch(consumer->address(), buffer))
+		
+		if (_message->process(size, buffer, workBuffer))
+		{		
+			for (auto &consumer : _oscConsumers)
 			{
-				const auto message = consumer->message();
-
-				if (message->process(size, buffer, workBuffer))
+				if (_matchHelper.isMatch(consumer->address(), buffer))
 				{
-					consumer->callbackMessage();
+					consumer->callbackMessage(_message);
 				}
 			}
 		}
@@ -192,6 +192,10 @@ public:
 	{
 		_handleProducers(send);
 		_handleConsumers();
+	}
+
+	TMessage* message() {
+		return _message;
 	}
 };
 } // namespace OSC
