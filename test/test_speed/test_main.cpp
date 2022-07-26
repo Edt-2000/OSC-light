@@ -22,7 +22,7 @@
 
 void OSCStructLoop()
 {
-    auto OSC = OSC::Arduino<1, 1>();
+    auto OSC = OSC::Arduino<1, 1, OSC::StructMessage<Data, uint32_t>>();
 #ifdef ARDUINO
     auto stream = TestStream();
 #else
@@ -51,11 +51,11 @@ void OSCStructLoop()
 
         OSC.loop(true);
 
-        TEST_ASSERT_EQUAL_INT32(i + 0, cons._message.messageStruct.int1);
-        TEST_ASSERT_EQUAL_INT32(i + 1, cons._message.messageStruct.int2);
-        TEST_ASSERT_EQUAL_INT32(i + 2, cons._message.messageStruct.int3);
-        TEST_ASSERT_EQUAL_INT32(i + 3, cons._message.messageStruct.int4);
-        TEST_ASSERT_EQUAL_INT32(i + 4, cons._message.messageStruct.int5);
+        TEST_ASSERT_EQUAL_INT32(i + 0, cons.messageStruct.int1);
+        TEST_ASSERT_EQUAL_INT32(i + 1, cons.messageStruct.int2);
+        TEST_ASSERT_EQUAL_INT32(i + 2, cons.messageStruct.int3);
+        TEST_ASSERT_EQUAL_INT32(i + 3, cons.messageStruct.int4);
+        TEST_ASSERT_EQUAL_INT32(i + 4, cons.messageStruct.int5);
     }
 }
 
@@ -67,7 +67,7 @@ void OSCStructLoopSpeedTest()
     int iters[] = {1000, 10000, 100000, 1000000, 10000000};
 #endif
 
-    auto OSC = OSC::Arduino<1, 1>();
+    auto OSC = OSC::Arduino<1, 1, OSC::StructMessage<Data, uint32_t>>();
 #ifdef ARDUINO
     auto stream = TestStream();
 #else

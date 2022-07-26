@@ -19,7 +19,7 @@ void OSCBundle()
     auto consumer1 = MessageConsumer("/C1");
     auto consumer2 = MessageConsumer("/C2");
 
-    auto OSC = OSC::Arduino<2, 0>();
+    auto OSC = OSC::Arduino<2, 0, OSC::StructMessage<Data, uint32_t>>();
     OSC.addConsumer(&consumer1);
     OSC.addConsumer(&consumer2);
 
@@ -38,17 +38,17 @@ void OSCBundle()
     TEST_ASSERT_TRUE(consumer1.callbackCalled);
     TEST_ASSERT_TRUE(consumer2.callbackCalled);
 
-    TEST_ASSERT_EQUAL_INT32(1, consumer1._message.messageStruct.int1);
-    TEST_ASSERT_EQUAL_INT32(2, consumer1._message.messageStruct.int2);
-    TEST_ASSERT_EQUAL_INT32(3, consumer1._message.messageStruct.int3);
-    TEST_ASSERT_EQUAL_INT32(4, consumer1._message.messageStruct.int4);
-    TEST_ASSERT_EQUAL_INT32(5, consumer1._message.messageStruct.int5);
+    TEST_ASSERT_EQUAL_INT32(1, consumer1.messageStruct.int1);
+    TEST_ASSERT_EQUAL_INT32(2, consumer1.messageStruct.int2);
+    TEST_ASSERT_EQUAL_INT32(3, consumer1.messageStruct.int3);
+    TEST_ASSERT_EQUAL_INT32(4, consumer1.messageStruct.int4);
+    TEST_ASSERT_EQUAL_INT32(5, consumer1.messageStruct.int5);
 
-    TEST_ASSERT_EQUAL_INT32(6, consumer2._message.messageStruct.int1);
-    TEST_ASSERT_EQUAL_INT32(7, consumer2._message.messageStruct.int2);
-    TEST_ASSERT_EQUAL_INT32(8, consumer2._message.messageStruct.int3);
-    TEST_ASSERT_EQUAL_INT32(9, consumer2._message.messageStruct.int4);
-    TEST_ASSERT_EQUAL_INT32(10, consumer2._message.messageStruct.int5);
+    TEST_ASSERT_EQUAL_INT32(6, consumer2.messageStruct.int1);
+    TEST_ASSERT_EQUAL_INT32(7, consumer2.messageStruct.int2);
+    TEST_ASSERT_EQUAL_INT32(8, consumer2.messageStruct.int3);
+    TEST_ASSERT_EQUAL_INT32(9, consumer2.messageStruct.int4);
+    TEST_ASSERT_EQUAL_INT32(10, consumer2.messageStruct.int5);
 }
 
 void OSCSingleBundle()
@@ -56,7 +56,7 @@ void OSCSingleBundle()
     auto consumer1 = MessageConsumer("/C1");
     auto consumer2 = MessageConsumer("/C2");
 
-    auto OSC = OSC::Arduino<2, 0>();
+    auto OSC = OSC::Arduino<2, 0, OSC::StructMessage<Data, uint32_t>>();
     OSC.addConsumer(&consumer1);
     OSC.addConsumer(&consumer2);
 
@@ -75,11 +75,11 @@ void OSCSingleBundle()
     TEST_ASSERT_TRUE(consumer1.callbackCalled);
     TEST_ASSERT_FALSE(consumer2.callbackCalled);
 
-    TEST_ASSERT_EQUAL_INT32(1, consumer1._message.messageStruct.int1);
-    TEST_ASSERT_EQUAL_INT32(2, consumer1._message.messageStruct.int2);
-    TEST_ASSERT_EQUAL_INT32(3, consumer1._message.messageStruct.int3);
-    TEST_ASSERT_EQUAL_INT32(4, consumer1._message.messageStruct.int4);
-    TEST_ASSERT_EQUAL_INT32(5, consumer1._message.messageStruct.int5);
+    TEST_ASSERT_EQUAL_INT32(1, consumer1.messageStruct.int1);
+    TEST_ASSERT_EQUAL_INT32(2, consumer1.messageStruct.int2);
+    TEST_ASSERT_EQUAL_INT32(3, consumer1.messageStruct.int3);
+    TEST_ASSERT_EQUAL_INT32(4, consumer1.messageStruct.int4);
+    TEST_ASSERT_EQUAL_INT32(5, consumer1.messageStruct.int5);
 }
 
 void OSCEmptyBundle()
@@ -87,7 +87,7 @@ void OSCEmptyBundle()
     auto consumer1 = MessageConsumer("/C1");
     auto consumer2 = MessageConsumer("/C2");
 
-    auto OSC = OSC::Arduino<2, 0>();
+    auto OSC = OSC::Arduino<2, 0, OSC::StructMessage<Data, uint32_t>>();
     OSC.addConsumer(&consumer1);
     OSC.addConsumer(&consumer2);
 
@@ -112,7 +112,7 @@ void OSCErrorBundle()
     auto consumer1 = MessageConsumer("/C1");
     auto consumer2 = MessageConsumer("/C2");
 
-    auto OSC = OSC::Arduino<2, 0>();
+    auto OSC = OSC::Arduino<2, 0, OSC::StructMessage<Data, uint32_t>>();
     OSC.addConsumer(&consumer1);
     OSC.addConsumer(&consumer2);
 
@@ -131,11 +131,11 @@ void OSCErrorBundle()
     TEST_ASSERT_TRUE(consumer1.callbackCalled);
     TEST_ASSERT_FALSE(consumer2.callbackCalled);
 
-    TEST_ASSERT_EQUAL_INT32(1, consumer1._message.messageStruct.int1);
-    TEST_ASSERT_EQUAL_INT32(2, consumer1._message.messageStruct.int2);
-    TEST_ASSERT_EQUAL_INT32(3, consumer1._message.messageStruct.int3);
-    TEST_ASSERT_EQUAL_INT32(4, consumer1._message.messageStruct.int4);
-    TEST_ASSERT_EQUAL_INT32(5, consumer1._message.messageStruct.int5);
+    TEST_ASSERT_EQUAL_INT32(1, consumer1.messageStruct.int1);
+    TEST_ASSERT_EQUAL_INT32(2, consumer1.messageStruct.int2);
+    TEST_ASSERT_EQUAL_INT32(3, consumer1.messageStruct.int3);
+    TEST_ASSERT_EQUAL_INT32(4, consumer1.messageStruct.int4);
+    TEST_ASSERT_EQUAL_INT32(5, consumer1.messageStruct.int5);
 }
 
 void process()
