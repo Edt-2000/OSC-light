@@ -1,8 +1,5 @@
 #pragma once
 
-#include <stddef.h>
-#include <cstring>
-
 inline void memcpy(char *target, const char *source, size_t size, const bool platformIsBigEndian)
 {
     if (platformIsBigEndian)

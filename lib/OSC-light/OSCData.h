@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cstring>
-
 using namespace std;
 
 namespace OSC
