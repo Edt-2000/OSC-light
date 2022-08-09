@@ -8,9 +8,6 @@
 #include "OSCMessageProducer.h"
 #include "EndianMemcpy.h"
 
-#include <iostream>
-#include <memory>
-
 #ifdef UNIT_TEST
 #ifdef ARDUINO
 #include <Arduino.h>
